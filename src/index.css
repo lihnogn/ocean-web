@@ -8,89 +8,120 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Ocean Adventure Color Palette - Pastel & Glowing */
+    --background: 200 45% 96%;
+    --foreground: 210 100% 12%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 195 50% 98%;
+    --card-foreground: 210 100% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 195 50% 98%;
+    --popover-foreground: 210 100% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Deep Ocean Blue with glow */
+    --primary: 210 85% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 190 100% 65%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Coral Pink */
+    --secondary: 330 70% 85%;
+    --secondary-foreground: 330 50% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Accent: Bright Cyan Glow */
+    --accent: 180 100% 65%;
+    --accent-foreground: 210 100% 12%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Muted: Soft Teal */
+    --muted: 180 30% 90%;
+    --muted-foreground: 180 25% 40%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 190 40% 85%;
+    --input: 190 40% 85%;
+    --ring: 180 100% 65%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom Ocean Tokens */
+    --ocean-deep: 220 85% 25%;
+    --ocean-medium: 200 80% 45%;
+    --ocean-light: 190 70% 70%;
+    --ocean-surface: 185 60% 85%;
+    
+    --glow-cyan: 180 100% 65%;
+    --glow-yellow: 50 100% 70%;
+    --glow-pink: 330 100% 75%;
+    --glow-purple: 270 70% 75%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Gradients */
+    --gradient-ocean: linear-gradient(180deg, hsl(220 85% 25%), hsl(200 80% 45%), hsl(190 70% 70%));
+    --gradient-glow: radial-gradient(circle, hsl(180 100% 65% / 0.3), transparent);
+    --gradient-hero: linear-gradient(135deg, hsl(210 85% 45%), hsl(180 100% 65%));
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Shadows & Glows */
+    --shadow-glow: 0 0 30px hsl(180 100% 65% / 0.5);
+    --shadow-glow-strong: 0 0 50px hsl(180 100% 65% / 0.8);
+    --shadow-soft: 0 10px 30px hsl(210 85% 25% / 0.2);
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 195 50% 98%;
+    --sidebar-foreground: 210 100% 12%;
+    --sidebar-primary: 210 85% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 180 30% 90%;
+    --sidebar-accent-foreground: 210 100% 12%;
+    --sidebar-border: 190 40% 85%;
+    --sidebar-ring: 180 100% 65%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 220 85% 8%;
+    --foreground: 190 70% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 80% 12%;
+    --card-foreground: 190 70% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 80% 12%;
+    --popover-foreground: 190 70% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 180 100% 65%;
+    --primary-foreground: 220 85% 8%;
+    --primary-glow: 180 100% 75%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 330 60% 40%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 180 100% 65%;
+    --accent-foreground: 220 85% 8%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 210 50% 20%;
+    --muted-foreground: 180 40% 70%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 210 50% 20%;
+    --input: 210 50% 20%;
+    --ring: 180 100% 65%;
+
+    --ocean-deep: 220 85% 15%;
+    --ocean-medium: 200 80% 35%;
+    --ocean-light: 190 70% 60%;
+    --ocean-surface: 185 60% 75%;
+
+    --sidebar-background: 220 80% 12%;
+    --sidebar-foreground: 190 70% 95%;
+    --sidebar-primary: 180 100% 65%;
+    --sidebar-primary-foreground: 220 85% 8%;
+    --sidebar-accent: 210 50% 20%;
+    --sidebar-accent-foreground: 190 70% 95%;
+    --sidebar-border: 210 50% 20%;
+    --sidebar-ring: 180 100% 65%;
   }
 }
 
@@ -101,5 +132,138 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Quicksand', sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  /* Ocean Animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-30px); }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { 
+      box-shadow: 0 0 20px hsl(var(--glow-cyan) / 0.5);
+      filter: brightness(1);
+    }
+    50% { 
+      box-shadow: 0 0 40px hsl(var(--glow-cyan) / 0.8);
+      filter: brightness(1.2);
+    }
+  }
+
+  @keyframes bubble-rise {
+    0% {
+      transform: translateY(100vh) scale(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-100px) scale(1);
+      opacity: 0;
+    }
+  }
+
+  @keyframes swim {
+    0%, 100% {
+      transform: translateX(0) translateY(0) scaleX(1);
+    }
+    25% {
+      transform: translateX(20px) translateY(-10px) scaleX(1);
+    }
+    50% {
+      transform: translateX(0) translateY(-20px) scaleX(-1);
+    }
+    75% {
+      transform: translateX(-20px) translateY(-10px) scaleX(-1);
+    }
+  }
+
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(0) rotate(0deg);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1) rotate(180deg);
+    }
+  }
+
+  @keyframes ripple {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  /* Utility Classes */
+  .ocean-gradient {
+    background: var(--gradient-ocean);
+  }
+
+  .glow-effect {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .float-slow {
+    animation: float-slow 8s ease-in-out infinite;
+  }
+
+  .bubble {
+    animation: bubble-rise linear infinite;
+  }
+
+  .swim-animation {
+    animation: swim 10s ease-in-out infinite;
+  }
+
+  .sparkle-animation {
+    animation: sparkle 2s ease-in-out infinite;
+  }
+
+  /* Interactive Elements */
+  .ocean-button {
+    @apply relative overflow-hidden transition-all duration-300;
+    @apply hover:scale-105 hover:shadow-[0_0_30px_hsl(var(--glow-cyan)/0.6)];
+  }
+
+  .ocean-button::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent;
+    @apply translate-x-[-200%] transition-transform duration-700;
+  }
+
+  .ocean-button:hover::before {
+    @apply translate-x-[200%];
+  }
+
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px hsl(var(--glow-cyan) / 0.8);
   }
 }

@@ -1,0 +1,153 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { OceanBackground } from "@/components/OceanBackground";
+import { toast } from "sonner";
+import avatarFish from "@/assets/avatar-fish.png";
+import { User, Session } from "@supabase/supabase-js";
+
+const Auth = () => {
+  const navigate = useNavigate();
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        navigate("/aquarium");
+      }
+    });
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        navigate("/aquarium");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) throw error;
+        toast.success("Welcome back to Ocean Adventure!");
+      } else {
+        const redirectUrl = `${window.location.origin}/aquarium`;
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+          },
+        });
+        
+        if (error) throw error;
+        toast.success("Welcome to Ocean Adventure! You earned your first Shiny Star! 🌟");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
+      <OceanBackground />
+      
+      <div className="relative z-10 w-full max-w-md">
+        <div className="glass-effect p-8 rounded-3xl border border-white/20 shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)]">
+          {/* Avatar Fish Animation */}
+          <div className="flex justify-center mb-6">
+            <img 
+              src={avatarFish} 
+              alt="Avatar Fish" 
+              className="w-24 h-24 animate-swim drop-shadow-[0_0_20px_rgba(102,221,255,0.8)]"
+            />
+          </div>
+
+          <h2 className="text-3xl font-bold text-center mb-6 text-glow">
+            {isLogin ? "Welcome Back!" : "Join the Adventure"}
+          </h2>
+
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-white/90">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="glass-effect border-white/20 focus:border-accent focus:ring-accent text-white placeholder:text-white/50"
+                placeholder="your@email.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-white/90">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="glass-effect border-white/20 focus:border-accent focus:ring-accent text-white placeholder:text-white/50"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full ocean-button bg-primary hover:bg-primary/90 text-white py-6 text-lg font-semibold rounded-xl"
+            >
+              {loading ? "Loading..." : isLogin ? "Dive In" : "Start Adventure"}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-accent hover:text-accent/80 transition-colors underline"
+            >
+              {isLogin ? "Need an account? Sign up" : "Already have an account? Log in"}
+            </button>
+          </div>
+
+          {!isLogin && (
+            <p className="mt-4 text-sm text-white/70 text-center">
+              🌟 Daily login rewards: Earn 1 Shiny Star every day!
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Auth;
