@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { OceanBackground } from "@/components/OceanBackground";
 import { StarCount } from "@/components/StarCount";
+import { useStars } from "@/state/StarsContext";
 import { Button } from "@/components/ui/button";
 import avatarFish from "@/assets/avatar-fish.png";
 import { Sparkles, LogOut } from "lucide-react";
@@ -14,7 +15,7 @@ const Aquarium = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [stars, setStars] = useState(1);
+  const { stars } = useStars();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

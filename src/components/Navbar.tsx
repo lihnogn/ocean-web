@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, Gamepad2, ShoppingBag, Fish, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StarCount } from "@/components/StarCount";
+import { useStars } from "@/state/StarsContext";
 
 const navItems = [
   { path: "/", label: "Home", icon: Home },
@@ -13,6 +15,7 @@ const navItems = [
 
 export const Navbar = () => {
   const location = useLocation();
+  const { stars } = useStars();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-white/20">
@@ -22,6 +25,10 @@ export const Navbar = () => {
             <Fish className="w-8 h-8 text-primary animate-swim" />
             <span className="text-xl font-bold text-glow">Ocean Adventure</span>
           </Link>
+
+          <div className="flex items-center gap-4">
+            <StarCount count={stars} />
+          </div>
 
           <div className="flex items-center gap-1 md:gap-2">
             {navItems.map((item) => {

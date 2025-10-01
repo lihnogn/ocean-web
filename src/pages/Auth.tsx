@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OceanBackground } from "@/components/OceanBackground";
 import { toast } from "sonner";
-import avatarFish from "@/assets/avatar-fish.png";
 import { User, Session } from "@supabase/supabase-js";
+import { useStars } from "@/state/StarsContext";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const { setStars } = useStars();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -67,6 +68,8 @@ const Auth = () => {
         
         if (error) throw error;
         toast.success("Welcome to Ocean Adventure! You earned your first Shiny Star! 🌟");
+        // Initialize stars to 1 for new users
+        setStars(1);
       }
     } catch (error: any) {
       toast.error(error.message || "Authentication failed");
@@ -81,12 +84,12 @@ const Auth = () => {
       
       <div className="relative z-10 w-full max-w-md">
         <div className="glass-effect p-8 rounded-3xl border border-white/20 shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)]">
-          {/* Avatar Fish Animation */}
-          <div className="flex justify-center mb-6">
-            <img 
-              src={avatarFish} 
-              alt="Avatar Fish" 
-              className="w-24 h-24 animate-swim drop-shadow-[0_0_20px_rgba(102,221,255,0.8)]"
+          {/* Background GIF above Welcome text */}
+          <div className="relative mb-6 overflow-hidden rounded-2xl">
+            <img
+              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N.gif?updatedAt=1759328372189"
+              alt="Ocean Adventure Background"
+              className="w-full h-40 md:h-48 object-cover pointer-events-none select-none"
             />
           </div>
 

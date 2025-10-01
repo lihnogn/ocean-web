@@ -13,15 +13,17 @@ const Landing = () => {
       
       {/* Hero Image with Overlay */}
       <div 
-        className="absolute inset-0 bg-cover bg-center opacity-40"
+        className="absolute inset-0 bg-cover bg-center opacity-40 pointer-events-none"
         style={{ backgroundImage: `url(${heroOcean})` }}
       />
       
       {/* Content */}
-      <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 text-glow animate-float">
-          Ocean Adventure
-        </h1>
+      <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
+        <img
+          src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N.gif?updatedAt=1759328372189"
+          alt="Ocean Adventure"
+          className="mx-auto mb-6 w-full max-w-[80%] h-auto"
+        />
         <p className="text-2xl md:text-3xl mb-4 text-white/90 animate-float-slow">
           Explore Your Mysterious Ocean
         </p>
@@ -37,11 +39,11 @@ const Landing = () => {
           <Sparkles className="w-6 h-6 mr-2 animate-sparkle" />
           Start Journey
         </Button>
-
         {/* Decorative Elements */}
         <div className="absolute -top-10 left-10 w-20 h-20 rounded-full bg-accent/30 blur-2xl animate-float" style={{ animationDelay: '0s' }} />
         <div className="absolute top-20 right-20 w-32 h-32 rounded-full bg-primary/20 blur-3xl animate-float-slow" style={{ animationDelay: '1s' }} />
         <div className="absolute -bottom-10 left-1/3 w-24 h-24 rounded-full bg-secondary/30 blur-2xl animate-float" style={{ animationDelay: '2s' }} />
+        {/* No title animations; GIF animates itself */}
       </div>
     </div>
   );
