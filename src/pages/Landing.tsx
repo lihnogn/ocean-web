@@ -20,7 +20,7 @@ const Landing = () => {
       {/* Content */}
       <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
         <img
-          src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N.gif?updatedAt=1759328372189"
+          src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/chu%20chinh?updatedAt=1759522141811"
           alt="Ocean Adventure"
           className="mx-auto mb-6 w-full max-w-[80%] h-auto"
         />
