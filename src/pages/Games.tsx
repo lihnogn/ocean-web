@@ -219,520 +219,1204 @@ type G2Pickup = { id: number; x: number; y: number; w: number; h: number; collec
 
 // Game 2: Runner - Complete rebuild
 function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
-  // Game constants
-  const G2_BG = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BG2.mp4?updatedAt=1759345792705";
-  const G2_STAR = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/34.png?updatedAt=1759317102787";
-  const G2_OBS = [
-    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle1.png",
-    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle2.png",
-    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle3.png",
-    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle4.png",
-    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle5.png",
-    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle6.png",
-    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle7.png"
-  ];
-
-  // Game state
+  const { stars: globalStars, unlockedSkins, unlockSkin } = useStars();
   const [mode, setMode] = useState<"select" | "running" | "paused" | "gameover" | "win">("select");
-  const [selectedSkin, setSelectedSkin] = useState<string | null>(null);
-  const [starsEarned, setStarsEarned] = useState(0);
-
-  // Game objects arrays
-  const [obstacles, setObstacles] = useState<Array<any>>([]);
-  const [luckyStars, setLuckyStars] = useState<Array<any>>([]);
-
-  // Game progression
-  const [speedFactor, setSpeedFactor] = useState(1.0);
-  const [obstaclesSpawned, setObstaclesSpawned] = useState(0);
-  const [starsSpawned, setStarsSpawned] = useState(0);
-
-  // Game refs
+  const [selIdx, setSelIdx] = useState<number>(() => {
+    // pick random free skin initially
+    const free = [0,1,2];
+    return free[Math.floor(Math.random() * free.length)];
+  });
+  const [runStars, setRunStars] = useState(0);
+  const [remaining, setRemaining] = useState(14);
   const containerRef = useRef<HTMLDivElement>(null);
-  const keysRef = useRef<Set<string>>(new Set());
-  const rafRef = useRef<number | null>(null);
+  const rafRef = useRef<number>();
+  const lastTsRef = useRef<number>(0);
+  const spawnTimerRef = useRef<number>(0);
+  const nextSpawnIndexRef = useRef<number>(0);
+  const orderRef = useRef<number[]>([]);
+  const playerRef = useRef<{ x:number; y:number; w:number; h:number; speed:number }|null>(null);
+  const obstaclesRef = useRef<G2Obstacle[]>([]);
+  const pickupsRef = useRef<G2Pickup[]>([]);
+  const frameBump = useRef(0); // used to force rerender/debug counters
+  const [, setFrame] = useState(0);
+  const keysRef = useRef<Record<string,boolean>>({});
+  const touchDirRef = useRef<{up:boolean;down:boolean;left:boolean;right:boolean}>({up:false,down:false,left:false,right:false});
+  const creditedRef = useRef(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const movingRef = useRef(false);
+  const jumpVelocityRef = useRef(0);
+  const isJumpingRef = useRef(false);
+  const speedFactorRef = useRef(1);
+  const playerSpeedBaseRef = useRef(0);
+  const spawnCountRef = useRef(0);
+  const laneToggleRef = useRef(true); // alternate lanes to reduce overlap
+  const starSpawnTimerRef = useRef(0);
+  const starSpawnedRef = useRef(0);
+  const nextStarInRef = useRef(0);
+  const modeRef = useRef(mode);
+  const passedCountRef = useRef(0);
 
-  // Skin selection
-  const skins = [
-    { id: "fish1", name: "Cá Xanh", emoji: "🐟", unlocked: true },
-    { id: "fish2", name: "Cá Vàng", emoji: "🐠", unlocked: true }
-  ];
-
-  // Keyboard handlers
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      if (["arrowleft", "arrowright", "a", "d", "escape"].includes(key)) {
-        e.preventDefault();
-        keysRef.current.add(key);
-
-        if (key === "escape") {
-          if (mode === "running") {
-            setMode("paused");
-          } else if (mode === "paused") {
-            setMode("running");
-          }
-        }
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      if (["arrowleft", "arrowright", "a", "d"].includes(key)) {
-        keysRef.current.delete(key);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [mode]);
-
-  // Cleanup function
-  const cleanup = () => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-
-    // Remove all game elements
-    if (containerRef.current) {
-      const container = containerRef.current;
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
-    }
-
-    setObstacles([]);
-    setLuckyStars([]);
-    setObstaclesSpawned(0);
-    setStarsSpawned(0);
-    setSpeedFactor(1.0);
-    setStarsEarned(0);
+  const shuffle = (arr: number[]) => {
+    const a = [...arr];
+    for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
   };
 
-  // Start game
-  const startGame = () => {
-    if (!selectedSkin) return;
+  // Helper: attempt to spawn next obstacle from the right with progressive speed and non-overlapping spawn area
+  const trySpawnObstacle = (rect: DOMRect) => {
+    if (nextSpawnIndexRef.current >= orderRef.current.length) return false;
+    // Prevent spawn if another obstacle is still in the spawn zone near the right edge
+    const spawnZoneX = rect.width * 0.82;
+    const zoneOccupied = obstaclesRef.current.some(o => o.x > spawnZoneX && Math.abs(o.y - (rect.height*0.5)) < rect.height); // any in zone
+    if (zoneOccupied) return false;
 
+    const type = orderRef.current[nextSpawnIndexRef.current++];
+    // Size: 3× larger than previous baseline, clamped
+    const base = rect.height * 0.12;
+    const size = Math.min(rect.height * 0.4, base * 3 * (0.95 + Math.random() * 0.1));
+    const laneTop = laneToggleRef.current; laneToggleRef.current = !laneToggleRef.current;
+    const bandTop = laneTop ? rect.height * 0.22 : rect.height * 0.58;
+    let y = bandTop + (Math.random() * rect.height * 0.12 - rect.height * 0.06);
+    const x = rect.width + size + Math.random() * 60;
+    // Progressive difficulty: speed increases slightly with each spawn
+    const baseSpeed = rect.width * 0.25; // px/s
+    const speed = Math.min(baseSpeed * 1.9, baseSpeed * (1 + spawnCountRef.current * 0.035));
+    spawnCountRef.current += 1;
+    // Ensure no overlap at spawn with neighbors in spawn zone by nudging Y up to a few tries
+    let tries = 0;
+    while (tries < 8 && obstaclesRef.current.some(o => (o.x > rect.width * 0.9) && (y < o.y + o.h) && (y + size > o.y))) {
+      // nudge to another vertical spot within the band to avoid overlap at spawn
+      y += size * 0.6 * (tries % 2 === 0 ? 1 : -1);
+      // clamp within screen bounds
+      y = Math.max(20, Math.min(rect.height - size - 20, y));
+      tries++;
+    }
+    obstaclesRef.current.push({ id: Date.now() + nextSpawnIndexRef.current, type, x, y, w: size, h: size, passed: false, vx: speed });
+    return true;
+  };
+
+  // Helper: spawn a lucky star from the right at a random lane
+  const spawnLuckyStar = (rect: DOMRect) => {
+    if (starSpawnedRef.current >= 3) return;
+    const x = rect.width + 200 + Math.random() * 200;
+    const band = Math.random() < 0.5 ? rect.height * 0.3 : rect.height * 0.7;
+    const y = band + (Math.random() * rect.height * 0.12 - rect.height * 0.06);
+    const size = Math.max(56, rect.height * 0.07);
+    pickupsRef.current.push({ id: Date.now() + starSpawnedRef.current, x, y, w: size, h: size, collected: false });
+    starSpawnedRef.current += 1;
+    // schedule next star in 3-6s
+    starSpawnTimerRef.current = 0;
+    nextStarInRef.current = 3 + Math.random() * 3;
+  };
+
+  const startRun = () => {
+    modeRef.current = "running";
     setMode("running");
-    setStarsEarned(0);
-    setObstacles([]);
-    setLuckyStars([]);
-    setSpeedFactor(1.0);
-    setObstaclesSpawned(0);
-    setStarsSpawned(0);
+    setRunStars(0);
+    creditedRef.current = false;
+    // init player and entities
+    const rect = containerRef.current!.getBoundingClientRect();
+    // Make the sprite roughly 3× bigger than the earlier baseline
+    const pw = Math.max(120, Math.min(240, rect.width * 0.12));
+    const ph = pw;
+    playerRef.current = { x: rect.width * 0.12, y: rect.height * 0.5, w: pw, h: ph, speed: Math.max(180, rect.width * 0.35) };
+    // auto-run setup
+    // Base speed factor starts at 2 (as requested)
+    speedFactorRef.current = 2;
+    playerSpeedBaseRef.current = Math.max(140, rect.width * 0.22);
+    setIsMoving(true);
+    movingRef.current = true;
+    obstaclesRef.current = [];
+    pickupsRef.current = [];
+    // spawn order: each of 7 twice
+    orderRef.current = shuffle([...Array(7).keys(), ...Array(7).keys()]);
+    nextSpawnIndexRef.current = 0;
+    spawnTimerRef.current = 0;
+    spawnCountRef.current = 0;
+    laneToggleRef.current = true;
+    // spawn first obstacle immediately so gameplay starts right away
+    trySpawnObstacle(rect);
+    // make first obstacle visible immediately by placing it slightly inside the right edge
+    if (obstaclesRef.current.length > 0) {
+      const first = obstaclesRef.current[0];
+      first.x = Math.min(first.x, rect.width - first.w * 0.8);
+    }
+    // reset lucky star timers
+    starSpawnedRef.current = 0;
+    starSpawnTimerRef.current = 0;
+    nextStarInRef.current = 2 + Math.random() * 2; // first star between 2-4s
+    passedCountRef.current = 0;
+    frameBump.current = 0;
+    setRemaining(orderRef.current.length);
+    lastTsRef.current = performance.now();
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(loop);
   };
 
-  // Reset to menu
-  const resetToMenu = () => {
-    cleanup();
-    setMode("select");
-    setSelectedSkin(null);
+  const endRun = (win: boolean) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    modeRef.current = win ? "win" : "gameover";
+    setMode(win ? "win" : "gameover");
+    if (!creditedRef.current) {
+      creditedRef.current = true;
+      onEarnStars(runStars);
+    }
   };
 
-  // Game loop
-  useEffect(() => {
-    if (mode !== "running" || !containerRef.current) return;
+  const loop = (ts: number) => {
+    const dt = Math.min(0.05, (ts - lastTsRef.current) / 1000);
+    lastTsRef.current = ts;
+    const el = containerRef.current;
+    const player = playerRef.current;
+    if (!el || !player) {
+      rafRef.current = requestAnimationFrame(loop);
+      return;
+    }
+    
+    // Skip updates if not running, but keep loop alive
+    if (mode !== 'running') {
+      rafRef.current = requestAnimationFrame(loop);
+      return;
+    }
+    
+    const rect = el.getBoundingClientRect();
+    const baseSpeed = rect.width * 0.25; // px/s (reference only)
 
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-
-    // Create player element
-    const playerElement = document.createElement("div");
-    playerElement.className = "absolute animate-runner-glow animate-runner-swim will-change-transform pointer-events-none";
-    playerElement.style.width = "80px";
-    playerElement.style.height = "80px";
-    playerElement.style.backgroundColor = selectedSkin === "fish1" ? "#06b6d4" : "#eab308";
-    playerElement.style.borderRadius = "50%";
-    playerElement.style.display = "flex";
-    playerElement.style.alignItems = "center";
-    playerElement.style.justifyContent = "center";
-    playerElement.style.fontSize = "48px";
-
-    const emoji = selectedSkin === "fish1" ? "🐟" : "🐠";
-    playerElement.textContent = emoji;
-
-    container.appendChild(playerElement);
-
-    let playerX = rect.width * 0.5 - 40; // Center position
-    let playerY = rect.height - 100; // Bottom position
-    let playerVx = 0;
-    const playerSpeed = 300;
-
-    let gameTime = 0;
-    let nextSpawnTime = 2000; // 2 second delay
-    let lastTimestamp = performance.now();
-
-    const gameLoop = (timestamp: number) => {
-      const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
-      lastTimestamp = timestamp;
-      gameTime += dt * 1000; // Convert to milliseconds
-
-      // Update player position
-      playerVx = 0;
-      if (keysRef.current.has("arrowleft") || keysRef.current.has("a")) {
-        playerVx = -playerSpeed;
-      } else if (keysRef.current.has("arrowright") || keysRef.current.has("d")) {
-        playerVx = playerSpeed;
+    // auto-run: move player to the right continuously
+    if (!isMoving) { setIsMoving(true); }
+    movingRef.current = true;
+    // keyboard adjustments (WASD/Arrows) while preserving forward motion
+    const k = keysRef.current;
+    let ax = 0, ay = 0;
+    if (k["arrowup"]||k["w"]) ay -= 1;
+    if (k["arrowdown"]||k["s"]) ay += 1;
+    if (k["arrowleft"]||k["a"]) ax -= 1;
+    if (k["arrowright"]||k["d"]) ax += 1;
+    const amag = Math.hypot(ax, ay) || 1;
+    const lateralSpeed = playerSpeedBaseRef.current * 0.6;
+    player.x += playerSpeedBaseRef.current * speedFactorRef.current * dt + (ax/amag) * lateralSpeed * dt;
+    
+    // Jump physics (gravity + velocity)
+    if (isJumpingRef.current) {
+      const gravity = 1800; // px/s²
+      jumpVelocityRef.current += gravity * dt;
+      player.y += jumpVelocityRef.current * dt;
+      // Land on ground
+      const groundY = rect.height * 0.5;
+      if (player.y >= groundY) {
+        player.y = groundY;
+        isJumpingRef.current = false;
+        jumpVelocityRef.current = 0;
       }
+    } else {
+      player.y += (ay/amag) * lateralSpeed * dt;
+    }
+    
+    // bounds
+    player.x = Math.max(0, Math.min(rect.width - player.w, player.x));
+    player.y = Math.max(0, Math.min(rect.height - player.h, player.y));
+    
+    // Loop player back to start when reaching right edge
+    if (player.x >= rect.width - player.w) {
+      player.x = 0;
+    }
 
-      playerX += playerVx * dt;
-      playerX = Math.max(0, Math.min(rect.width - 80, playerX));
-
-      playerElement.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
-
-      // Spawn objects
-      if (gameTime >= nextSpawnTime && obstaclesSpawned < 14) {
-        const shouldSpawnStar = starsSpawned < 3 && Math.random() < 0.2;
-
-        if (shouldSpawnStar) {
-          // Spawn star
-          const starElement = document.createElement("img");
-          starElement.src = G2_STAR;
-          starElement.className = "absolute animate-star-sparkle will-change-transform pointer-events-none";
-          starElement.style.width = "32px";
-          starElement.style.height = "32px";
-
-          const starX = Math.random() * (rect.width - 100) + 50;
-          starElement.style.left = `${starX}px`;
-          starElement.style.top = "-32px";
-
-          container.appendChild(starElement);
-
-          setLuckyStars(prev => [...prev, {
-            element: starElement,
-            x: starX,
-            y: -32,
-            vy: rect.height * 0.25 * speedFactor
-          }]);
-
-          setStarsSpawned(prev => prev + 1);
-        } else {
-          // Spawn obstacle
-          const obstacleElement = document.createElement("img");
-          obstacleElement.src = G2_OBS[Math.floor(Math.random() * G2_OBS.length)];
-          obstacleElement.className = "absolute animate-enter will-change-transform pointer-events-none";
-          obstacleElement.style.width = "60px";
-          obstacleElement.style.height = "60px";
-
-          const obstacleX = Math.random() * (rect.width - 110) + 50;
-          obstacleElement.style.left = `${obstacleX}px`;
-          obstacleElement.style.top = "-60px";
-
-          container.appendChild(obstacleElement);
-
-          setObstacles(prev => [...prev, {
-            element: obstacleElement,
-            x: obstacleX,
-            y: -60,
-            vy: rect.height * 0.25 * speedFactor
-          }]);
-
-          setObstaclesSpawned(prev => prev + 1);
-          setSpeedFactor(prev => prev * 1.05); // Increase speed by 5%
-        }
-
-        nextSpawnTime = gameTime + 1500 + Math.random() * 500; // 1.5-2 seconds
+    // spawn obstacles sequentially (non-overlapping at spawn), with progressive speed
+    spawnTimerRef.current += dt;
+    const targetInterval = 1.1 + Math.random() * 0.6; // 1.1 - 1.7s between spawns
+    if (nextSpawnIndexRef.current < orderRef.current.length && spawnTimerRef.current >= targetInterval) {
+      // Only spawn if spawn zone is clear
+      if (trySpawnObstacle(rect)) {
+        spawnTimerRef.current = 0;
       }
+    }
 
-      // Update obstacles and stars
-      setObstacles(prev => prev.map(obstacle => {
-        obstacle.y += obstacle.vy * dt;
-        obstacle.element.style.transform = `translateY(${obstacle.y}px)`;
+    // Lucky stars: spawn randomly up to 3 during run
+    starSpawnTimerRef.current += dt;
+    if (starSpawnedRef.current < 3 && starSpawnTimerRef.current >= nextStarInRef.current) {
+      spawnLuckyStar(rect);
+    }
 
-        // Check if passed bottom
-        if (obstacle.y > rect.height && !obstacle.passed) {
-          obstacle.passed = true;
-          setStarsEarned(prev => prev + 1);
-          onEarnStars(1);
-        }
+    // move obstacles and pickups
+    obstaclesRef.current.forEach(o => { o.x -= (o.vx * speedFactorRef.current) * dt; });
+    // pickups move a bit slower than average obstacle
+    const starSpeed = rect.width * 0.22;
+    pickupsRef.current.forEach(p => p.x -= starSpeed * speedFactorRef.current * dt);
+    // remove offscreen
+    obstaclesRef.current = obstaclesRef.current.filter(o => o.x + o.w > -20);
+    pickupsRef.current = pickupsRef.current.filter(p => p.x + p.w > -20 && !p.collected);
 
-        // Remove if off screen
-        if (obstacle.y > rect.height + 100) {
-          if (obstacle.element.parentNode) {
-            obstacle.element.remove();
-          }
-          return null;
-        }
-        return obstacle;
-      }).filter(Boolean));
-
-      setLuckyStars(prev => prev.map(star => {
-        star.y += star.vy * dt;
-        star.element.style.transform = `translateY(${star.y}px)`;
-
-        // Remove if off screen
-        if (star.y > rect.height + 100) {
-          if (star.element.parentNode) {
-            star.element.remove();
-          }
-          return null;
-        }
-        return star;
-      }).filter(Boolean));
-
-      // Collision detection
-      const playerRect = { left: playerX, right: playerX + 80, top: playerY, bottom: playerY + 80 };
-
-      // Check obstacle collisions
-      for (const obstacle of obstacles) {
-        if (!obstacle) continue;
-        const obstacleRect = {
-          left: obstacle.x,
-          right: obstacle.x + 60,
-          top: obstacle.y,
-          bottom: obstacle.y + 60
-        };
-
-        if (!(playerRect.right < obstacleRect.left ||
-              playerRect.left > obstacleRect.right ||
-              playerRect.bottom < obstacleRect.top ||
-              playerRect.top > obstacleRect.bottom)) {
-          // Collision - Game Over
-          cleanup();
-          setMode("gameover");
-          return;
-        }
+    // scoring: passing obstacles
+    obstaclesRef.current.forEach(o => {
+      if (!o.passed && (o.x + o.w) < player.x) {
+        o.passed = true;
+        passedCountRef.current += 1;
+        setRunStars(rs => rs + 1);
+        // passing an obstacle increases speed slightly for progressive difficulty
+        speedFactorRef.current = Math.min(5, speedFactorRef.current + 0.4);
       }
+    });
+    // remove obstacles that have passed the player
+    obstaclesRef.current = obstaclesRef.current.filter(o => !(o.passed && (o.x + o.w) < player.x));
+    const notSpawned = orderRef.current.length - nextSpawnIndexRef.current;
+    const activeIncoming = obstaclesRef.current.filter(o => !o.passed).length;
+    setRemaining(Math.max(0, notSpawned + activeIncoming));
 
-      // Check star collisions
-      setLuckyStars(prev => prev.map(star => {
-        if (!star) return null;
-        const starRect = {
-          left: star.x,
-          right: star.x + 32,
-          top: star.y,
-          bottom: star.y + 32
-        };
-
-        const collision = !(playerRect.right < starRect.left ||
-                          playerRect.left > starRect.right ||
-                          playerRect.bottom < starRect.top ||
-                          playerRect.top > starRect.bottom);
-
-        if (collision) {
-          setStarsEarned(prev => prev + 2);
-          onEarnStars(2);
-          if (star.element.parentNode) {
-            star.element.remove();
-          }
-          return null; // Remove collected star
-        }
-        return star;
-      }).filter(Boolean));
-
-      // Check win condition
-      if (obstaclesSpawned >= 14 && obstacles.length === 0 && luckyStars.length === 0) {
-        cleanup();
-        setMode("win");
+    // collisions
+    const px = player.x, py = player.y, pw = player.w, ph = player.h;
+    for (const o of obstaclesRef.current) {
+      if (px < o.x + o.w && px + pw > o.x && py < o.y + o.h && py + ph > o.y) {
+        endRun(false);
+        setFrame(f=>f+1);
         return;
       }
-
-      rafRef.current = requestAnimationFrame(gameLoop);
-    };
-
-    rafRef.current = requestAnimationFrame(gameLoop);
-
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
+    }
+    for (const s of pickupsRef.current) {
+      if (!s.collected && px < s.x + s.w && px + pw > s.x && py < s.y + s.h && py + ph > s.y) {
+        s.collected = true;
+        setRunStars(rs => rs + 2);
+        // collecting a lucky star increases speed (+0.5)
+        speedFactorRef.current = Math.min(5, speedFactorRef.current + 0.4);
       }
-      cleanup();
+    }
+
+    // win check: all spawned and none left on screen
+    if (nextSpawnIndexRef.current >= orderRef.current.length && obstaclesRef.current.length === 0) {
+      endRun(true);
+      setFrame(f=>f+1);
+      return;
+    }
+
+    // request next frame and force a visual tick every iteration
+    frameBump.current += 1;
+    setFrame(f=>f+1);
+    rafRef.current = requestAnimationFrame(loop);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      keysRef.current[k] = e.type === 'keydown';
+      if (k === 'escape') { setMode('paused'); }
+      // Jump on Space key
+      if (k === ' ' && e.type === 'keydown' && !isJumpingRef.current && mode === 'running') {
+        isJumpingRef.current = true;
+        jumpVelocityRef.current = -600; // initial upward velocity (px/s)
+      }
     };
-  }, [mode, selectedSkin, obstaclesSpawned, starsSpawned, speedFactor]);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, []);
+
+  const currentSkin = G2_SKINS[selIdx];
+  const isUnlocked = !!unlockedSkins[currentSkin.id] || currentSkin.cost === 0;
+  const debugPlayer = playerRef.current;
+  const debugSpeed = speedFactorRef.current;
+  const debugObstacleCount = obstaclesRef.current.length;
+  const debugPickupCount = pickupsRef.current.length;
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  const tryUnlock = () => {
+    if (isUnlocked) return;
+    const ok = unlockSkin(currentSkin.id, currentSkin.cost);
+    if (!ok) toast.error("Not enough stars to unlock this skin.");
+    else toast.success("Skin unlocked!");
+  };
+
+  const resetAndClose = () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); onEarnStars(0); onClose(); };
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black">
-      {/* Video Background */}
-      <video
-        className="absolute inset-0 w-full h-full object-cover"
-        src={G2_BG}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-      />
-
-      {/* Game UI Overlay */}
+    <div className="fixed inset-0 z-[90]">
+      <video className="absolute inset-0 w-full h-full object-cover" src={G2_BG} autoPlay muted loop playsInline preload="auto" />
       <div className="absolute inset-0 bg-black/30" />
+      <div ref={containerRef} className="relative z-10 h-full w-full overflow-hidden">
 
-      {/* Character Selection */}
-      {mode === "select" && (
-        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
-          <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
-            <h2 className="text-3xl font-bold mb-6 text-slate-800">🐟 Chọn Nhân Vật 🐟</h2>
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {skins.map(skin => (
-                <button
-                  key={skin.id}
-                  onClick={() => setSelectedSkin(skin.id)}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    selectedSkin === skin.id
-                      ? "border-cyan-500 bg-cyan-50"
-                      : "border-gray-300 bg-white hover:border-cyan-300"
-                  }`}
-                >
-                  <div className="text-4xl mb-2">{skin.emoji}</div>
-                  <div className="text-sm font-medium">{skin.name}</div>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={startGame}
-              disabled={!selectedSkin}
-              className={`px-8 py-4 rounded-2xl font-bold text-xl shadow-lg transition-all ${
-                selectedSkin
-                  ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:scale-105"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
-            >
-              🎮 Bắt Đầu Chơi
-            </button>
-          </div>
+        {/* HUD */}
+        <div className="absolute top-3 left-3 z-[110] flex items-center gap-2 text-white/95">
+          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">Run Stars: <b>{runStars}</b></div>
+          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">Your Stars: <b>{globalStars}</b></div>
+          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">Left: <b>{remaining}</b></div>
         </div>
-      )}
+        <div className="absolute top-[72px] left-3 z-[110] text-xs text-white/80 font-mono space-y-1 bg-black/30 border border-white/20 rounded-lg px-3 py-2 backdrop-blur">
+          <div>mode: {mode}</div>
+          <div>frame: {frameBump.current}</div>
+          <div>speedFactor: {debugSpeed.toFixed(2)}</div>
+          {debugPlayer && (
+            <>
+              <div>player.x: {debugPlayer.x.toFixed(1)}</div>
+              <div>player.y: {debugPlayer.y.toFixed(1)}</div>
+            </>
+          )}
+          <div>obstacles: {debugObstacleCount}</div>
+          <div>stars: {debugPickupCount}</div>
+        </div>
+        <div className="absolute top-3 right-3 z-[120] flex items-center gap-2">
+          <button onClick={() => setMode(mode === 'paused' ? 'running' : 'paused')} className="px-3 py-1 rounded-xl bg-white/80 text-slate-900">{mode === 'paused' ? 'Resume' : 'Pause'}</button>
+          <button onClick={resetAndClose} className="px-3 py-1 rounded-xl bg-white/80 text-slate-900">Exit</button>
+        </div>
 
-      {/* Game Container */}
-      {(mode === "running" || mode === "paused") && (
-        <>
-          <div
-            ref={containerRef}
-            className="absolute inset-0 overflow-hidden"
-            style={{ position: "relative" }}
-          />
+        {/* Player */}
+        {mode !== 'select' && playerRef.current && (
+          <div className="absolute will-change-transform" style={{ width: playerRef.current.w, height: playerRef.current.h, transform: `translate3d(${playerRef.current.x}px, ${playerRef.current.y}px, 0)` }}>
+            <img
+              src={currentSkin.img}
+              alt={currentSkin.name}
+              className={`w-full h-full object-contain drop-shadow-[0_0_16px_rgba(255,255,255,0.9)] animate-runner-glow ${isMoving ? 'animate-runner-swim' : 'animate-runner-breathe'}`}
+            />
+          </div>
+        )}
 
-          {/* HUD */}
-          <div className="absolute top-4 left-4 z-[80] flex items-center gap-4 text-white">
-            <div className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-md border border-white/30">
-              Stars: <span className="font-bold text-yellow-300">{starsEarned}</span>
-            </div>
-            <div className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-md border border-white/30">
-              Progress: <span className="font-bold">{obstaclesSpawned}/14</span>
+        {/* Obstacles */}
+        {mode === 'running' && obstaclesRef.current.map(o => (
+          <img key={o.id} src={G2_OBS[o.type]} className="absolute animate-enter opacity-70 blur-[1px] will-change-transform" style={{ width: o.w, height: o.h, transform: `translate3d(${o.x}px, ${o.y}px, 0)` }} />
+        ))}
+
+        {/* Lucky stars */}
+        {mode === 'running' && pickupsRef.current.map(s => (
+          <img key={s.id} src={G2_STAR} className="absolute animate-star animate-star-glow animate-star-sparkle will-change-transform" style={{ width: s.w, height: s.h, transform: `translate3d(${s.x}px, ${s.y}px, 0)` }} />
+        ))}
+
+        {/* Touch controls removed: auto-run mode */}
+
+        {/* Skin selector */}
+        {mode === 'select' && (
+          <div className="absolute inset-0 grid place-items-center">
+            <div className="relative w-[92%] max-w-3xl rounded-3xl border border-white/30 bg-white/80 p-6 text-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.5)] animate-g1-pop">
+              <h3 className="text-2xl font-bold mb-2 text-center">Choose your character and let's begin.</h3>
+              <div className="flex items-center justify-between gap-3">
+                <button className="px-3 py-2 rounded-xl bg-white/90" onClick={() => setSelIdx((i) => (i - 1 + G2_SKINS.length) % G2_SKINS.length)}>◀</button>
+                <div className="flex flex-col items-center">
+                  <div className="w-56 h-56 rounded-2xl bg-white/40 border border-white/30 grid place-items-center overflow-hidden">
+                    <img
+                      src={currentSkin.img}
+                      alt={currentSkin.name}
+                      className={`${currentSkin.id === 'oyster' ? 'max-w-[80%] max-h-[80%]' : 'max-w-[100%] max-h-[100%]'} ${(currentSkin.id === 'crab' || currentSkin.id === 'jellyfish') ? 'scale-130' : (['oyster','turtle'].includes(currentSkin.id) ? '' : 'scale-130')} object-contain drop-shadow`}
+                    />
+                  </div>
+                  <div className="mt-2 font-semibold uppercase">{currentSkin.name}</div>
+                  {!isUnlocked && (
+                    <div className="mt-1 text-sm">Cost: <b>{currentSkin.cost}</b> ⭐</div>
+                  )}
+                </div>
+                <button className="px-3 py-2 rounded-xl bg-white/90" onClick={() => setSelIdx((i) => (i + 1) % G2_SKINS.length)}>▶</button>
+              </div>
+              {!isUnlocked ? (
+                <div className="mt-4 flex justify-center gap-3">
+                  <button className="px-4 py-2 rounded-xl bg-yellow-300 text-slate-900 font-semibold" onClick={tryUnlock}>Unlock</button>
+                  <button className="px-4 py-2 rounded-xl bg-slate-900 text-white" onClick={() => toast("Need to unlock before playing.")}>Play</button>
+                </div>
+              ) : (
+                <div className="mt-4 flex justify-center">
+                  <button className="px-6 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold" onClick={startRun}>Play</button>
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Pause Overlay */}
-          {mode === "paused" && (
-            <div className="absolute inset-0 z-[85] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-              <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
-                <h2 className="text-2xl font-bold mb-4 text-slate-800">⏸️ Tạm Dừng</h2>
-                <p className="text-slate-700 mb-6">Nhấn Escape để tiếp tục</p>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setMode("running")}
-                    className="px-6 py-3 bg-cyan-500 text-white font-bold rounded-xl hover:scale-105 transition-transform"
-                  >
-                    ▶️ Tiếp Tục
-                  </button>
-                  <button
-                    onClick={resetToMenu}
-                    className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
-                  >
-                    🏠 Thoát
-                  </button>
-                </div>
+        {/* Game over / Win */}
+        {(mode === 'gameover' || mode === 'win') && (
+          <div className="absolute inset-0 grid place-items-center">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-g1-fade" />
+            <div className="relative z-10 w-[92%] max-w-md rounded-3xl border border-white/30 bg-white/85 p-6 text-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.5)] animate-g1-pop">
+              <h3 className="text-2xl font-bold mb-2 text-center">{mode === 'win' ? 'Congratulations!' : 'Game Over'}</h3>
+              <p className="mb-4 text-center">You earned <b>+{runStars}</b> stars this run.</p>
+              <div className="flex gap-3 justify-center">
+                <button className="px-4 py-2 rounded-xl bg-white/90 hover:bg-white font-medium" onClick={onClose}>Return</button>
+                <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold" onClick={() => { creditedRef.current || onEarnStars(runStars); creditedRef.current = true; setMode('select'); }}>Play Again</button>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Exit Button */}
+      </div>
+
+      <style>{`
+        @keyframes runner-glow { 0%,100% { filter: drop-shadow(0 0 10px rgba(255,255,255,0.6)) } 50% { filter: drop-shadow(0 0 18px rgba(125,211,252,1)) } }
+        .animate-runner-glow { animation: runner-glow 2s ease-in-out infinite }
+        @keyframes enter { from { opacity: 0; transform: translateX(20px) } to { opacity: 1; transform: translateX(0) } }
+        .animate-enter { animation: enter .35s ease-out }
+        @keyframes starPulse { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.12); opacity: 1 } }
+        .animate-star { animation: starPulse 1.2s ease-in-out infinite }
+        @keyframes starGlow { 0%,100% { filter: drop-shadow(0 0 8px rgba(250,204,21,0.6)) } 50% { filter: drop-shadow(0 0 16px rgba(250,204,21,1)) } }
+        .animate-star-glow { animation: starGlow 1.2s ease-in-out infinite }
+        @keyframes starSparkle { 0%,100% { transform: scale(1) rotate(0deg); opacity: 0.85 } 25% { transform: scale(1.15) rotate(5deg); opacity: 1 } 50% { transform: scale(0.95) rotate(-5deg); opacity: 0.9 } 75% { transform: scale(1.1) rotate(3deg); opacity: 1 } }
+        .animate-star-sparkle { animation: starSparkle 1.5s ease-in-out infinite }
+        @keyframes runner-breathe { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+        .animate-runner-breathe { animation: runner-breathe 2.2s ease-in-out infinite }
+        @keyframes runner-swim { 0% { transform: translateY(0) rotate(-2deg) } 50% { transform: translateY(-2px) rotate(2deg) } 100% { transform: translateY(0) rotate(-2deg) } }
+        .animate-runner-swim { animation: runner-swim .6s ease-in-out infinite }
+      `}</style>
+    </div>
+  );
+}// UI: Game card
+function GameCard({
+  gameKey,
+  meta,
+  onStart,
+  onSparkle,
+}: {
+  gameKey: GameKey;
+  meta: { title: string; description: string; gradient: string; accent: string };
+  onStart: () => void;
+  onSparkle: (n: number, x?: number, y?: number) => void;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleHoverSparkle = (e: React.MouseEvent) => {
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    onSparkle(0, e.clientX, e.clientY); // just visual sparkles without adding stars
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      className={`group relative rounded-3xl p-6 md:p-7 border border-white/25 backdrop-blur-md bg-gradient-to-br transform-gpu transition-all duration-300 md:hover:-translate-y-1 md:hover:scale-[1.02] active:scale-[0.99] ${
+        meta.gradient
+      } shadow-[0_20px_60px_rgba(0,0,0,0.25)] ${meta.accent} overflow-hidden`}
+      onMouseMove={handleHoverSparkle}
+    >
+      {/* glow & particles */}
+      <div className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-2xl bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.35),transparent_40%)]" />
+
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-10 w-10 rounded-xl bg-white/40 flex items-center justify-center shadow-inner">
+            <span className="text-2xl">{gameKey === "game1" ? "🐠" : gameKey === "game2" ? "🪝" : "🧠"}</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white drop-shadow-sm">{meta.title}</h2>
+        </div>
+        <p className="text-white/85 mb-6">{meta.description}</p>
+
+        {/* placeholder art */}
+        <div className="relative flex-1 min-h-[140px] rounded-2xl bg-white/30 border border-white/30 shadow-inner overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.6),transparent_60%)]" />
+          <div className="absolute inset-0 grid place-items-center select-none text-6xl md:text-7xl opacity-80">
+            {gameKey === "game1" && "🦀"}
+            {gameKey === "game2" && "🐟"}
+            {gameKey === "game3" && "🐙"}
+          </div>
+        </div>
+
+        <div className="mt-6">
           <button
-            onClick={resetToMenu}
-            className="absolute top-4 right-4 z-[80] px-4 py-2 rounded-xl bg-white/80 text-slate-900 font-semibold shadow hover:bg-white"
+            onClick={(e) => {
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              onSparkle(0, rect.left + rect.width / 2, rect.top);
+              onStart();
+            }}
+            className="relative inline-flex items-center justify-center w-full md:w-auto px-5 py-3 rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-900 font-semibold shadow-[0_10px_30px_rgba(16,185,129,0.45)] transition-transform duration-200 active:scale-95 hover:scale-[1.03] focus:scale-[1.03] focus:outline-none"
           >
-            Exit
+            <span className="relative z-10">Start</span>
+            <span className="absolute inset-0 rounded-2xl ring-2 ring-white/60 -slow" />
           </button>
-        </>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal: Tutorial
+function TutorialModal({
+  gameKey,
+  meta,
+  onStart,
+  onClose,
+}: {
+  gameKey: GameKey;
+  meta: { title: string; description: string };
+  onStart: () => void;
+  onClose: () => void;
+}) {
+  const controls = useMemo(() => {
+    if (gameKey === "game1")
+      return [
+        "Drag creatures to matching silhouettes.",
+        "Drop correctly to earn stars.",
+        "Touch: press and hold then move.",
+      ];
+    if (gameKey === "game2")
+      return [
+        "Auto-run: your character runs left→right automatically.",
+        "Avoid obstacles coming from the right; collect Lucky Stars (+2).",
+        "Speed increases as you pass obstacles or collect stars.",
+        "Exit is always available in the top-right.",
+      ];
+    return [
+      "Explore 15 different ocean-themed words.",
+      "Each word has 1-2 missing letters.",
+      "Click the floating letter treasures to complete words.",
+      "Complete each word to earn 1 Lucky Star!",
+      "Letters gently drift like ocean currents.",
+      "Letters won't overlap with each other or the word display.",
+    ];
+  }, [gameKey]);
+
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className="relative z-10 w-[92%] max-w-xl rounded-3xl border border-white/25 bg-gradient-to-b from-white/60 to-white/30 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-scale-in">
+        <h3 className="text-2xl font-bold mb-2 text-slate-900 drop-shadow">{meta.title}</h3>
+        <p className="text-slate-700 mb-4">{meta.description}</p>
+        <ul className="list-disc pl-5 space-y-1 text-slate-800 mb-6">
+          {controls.map((c, i) => (
+            <li key={i}>{c}</li>
+          ))}
+        </ul>
+        <div className="flex gap-3 justify-end">
+          <button
+            className="px-4 py-2 rounded-xl bg-white/70 hover:bg-white text-slate-900 font-medium shadow"
+            onClick={onClose}
+          >
+            Close
+          </button>
+          <button
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold shadow"
+            onClick={onStart}
+          >
+            Start Game
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+        .animate-fade-in { animation: fade-in .25s ease-out; }
+        @keyframes scale-in { from { opacity: 0; transform: translateY(8px) scale(.96) } to { opacity: 1; transform: translateY(0) scale(1) } }
+        .animate-scale-in { animation: scale-in .25s ease-out; }
+      `}</style>
+    </div>
+  );
+}
+
+// ===== Ocean Word Hunt Game =====
+function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [wordsCompleted, setWordsCompleted] = useState(0);
+  const [visibleWord, setVisibleWord] = useState<string>("");
+  const [missingLetters, setMissingLetters] = useState<string[]>([]);
+  const [floatingLetters, setFloatingLetters] = useState<Array<{letter: string, x: number, y: number, id: string}>>([]);
+  const [isComplete, setIsComplete] = useState(false);
+  const [mascotReaction, setMascotReaction] = useState<'happy' | 'sad' | null>(null);
+  const [shuffledWords, setShuffledWords] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const ORIGINAL_WORDS = ["OCEAN", "WAVE", "SHELL", "CORAL", "FISH", "WHALE", "TURTLE", "DOLPHIN", "SHARK", "PEARL", "SEAWEED", "ISLAND", "BOAT", "STARFISH", "CRAB"];
+
+  // Shuffle words for random order (only once per game session)
+  const shuffleArray = (array: string[]) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const OCEAN_LETTERS: Record<string, string> = {
+    "A": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/7.png?updatedAt=1759403594254",
+    "B": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/8.png?updatedAt=1759403594750",
+    "C": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/9.png?updatedAt=1759403594723",
+    "D": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/10.png?updatedAt=1759403594721",
+    "E": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/11.png?updatedAt=1759403594521",
+    "F": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/12.png?updatedAt=1759403594597",
+    "G": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/13.png?updatedAt=1759403594675",
+    "H": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/14.png?updatedAt=1759403594493",
+    "I": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/15.png?updatedAt=1759403594573",
+    "J": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/16.png?updatedAt=1759403594648",
+    "K": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/17.png?updatedAt=1759403594346",
+    "L": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/18.png?updatedAt=1759403594701",
+    "M": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/19.png?updatedAt=1759403594685",
+    "N": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/20.png?updatedAt=1759403594694",
+    "O": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/21.png?updatedAt=1759403594706",
+    "P": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/22.png?updatedAt=1759403594857",
+    "Q": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/23.png?updatedAt=1759403594716",
+    "R": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/24.png?updatedAt=1759403594736",
+    "S": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/25.png?updatedAt=1759403594774",
+    "T": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/26.png?updatedAt=1759403594693",
+    "U": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/27.png?updatedAt=1759403594761",
+    "V": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/28.png?updatedAt=1759403594749",
+    "W": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/29.png?updatedAt=1759403594775",
+    "X": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/30.png?updatedAt=1759403594660",
+    "Y": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/31.png?updatedAt=1759403594667",
+    "Z": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/32.png?updatedAt=1759403594662"
+  };
+
+  // Generate visible word with hidden letters
+  const generateVisibleWord = (word: string) => {
+    const wordLength = word.length;
+    let hiddenCount = wordLength <= 3 ? 1 : Math.random() < 0.6 ? 1 : 2;
+
+    const positionsToHide = [];
+    while (positionsToHide.length < hiddenCount) {
+      const pos = Math.floor(Math.random() * wordLength);
+      if (!positionsToHide.includes(pos)) {
+        positionsToHide.push(pos);
+      }
+    }
+
+    const missing = positionsToHide.map(pos => word[pos]);
+    const visible = word.split('').map((letter, i) =>
+      positionsToHide.includes(i) ? '_' : letter
+    ).join('');
+
+    return { visible, missing };
+  };
+
+  // Generate floating letters (unique, non-overlapping with collision detection)
+  const generateFloatingLetters = (missing: string[], word: string) => {
+    const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+    // Ensure UNIQUE letters only - no duplicates in the same round
+    const usedLetters = new Set(missing); // Start with missing letters
+    const availableLetters = allLetters.filter(letter => !usedLetters.has(letter));
+
+    // Add correct letters first
+    const letters = [...missing];
+
+    // Add unique decoy letters (no duplicates)
+    const decoyCount = Math.min(10, availableLetters.length); // Limit decoys to keep it manageable
+    const selectedDecoys = [];
+
+    // Shuffle available letters to randomize selection
+    for (let i = availableLetters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availableLetters[i], availableLetters[j]] = [availableLetters[j], availableLetters[i]];
+    }
+
+    // Take the first decoyCount letters (guaranteed unique)
+    for (let i = 0; i < decoyCount && i < availableLetters.length; i++) {
+      selectedDecoys.push(availableLetters[i]);
+    }
+
+    letters.push(...selectedDecoys);
+
+    // Final shuffle of all letters
+    for (let i = letters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [letters[i], letters[j]] = [letters[j], letters[i]];
+    }
+
+    // COLLISION-BASED PLACEMENT SYSTEM
+    // Each letter gets a unique position with minimum spacing
+
+    const letterSize = 120; // 120px for better spacing
+    const minSpacing = 120; // 120px minimum distance between letter centers
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    // Central zone: middle 30% of screen (reserved for word + UI)
+    const centralZone = {
+      x: screenWidth * 0.35, // Start at 35% from left (centered 30%)
+      y: screenHeight * 0.35, // Start at 35% from top (centered 30%)
+      width: screenWidth * 0.3, // 30% of screen width
+      height: screenHeight * 0.3 // 30% of screen height
+    };
+
+    // Mascot areas to avoid
+    const mascotAreas = [
+      { x: 0, y: screenHeight / 2 - 100, width: 200, height: 200 }, // Left mascot
+      { x: screenWidth - 200, y: screenHeight / 2 - 100, width: 200, height: 200 } // Right mascot
+    ];
+
+    const checkCollision = (x: number, y: number, existingPositions: Array<{x: number, y: number}>) => {
+      // Check central zone exclusion (30% middle area)
+      if (x + letterSize > centralZone.x && x < centralZone.x + centralZone.width &&
+          y + letterSize > centralZone.y && y < centralZone.y + centralZone.height) {
+        return true; // Collision with central zone
+      }
+
+      // Check mascot areas
+      for (const mascot of mascotAreas) {
+        if (x + letterSize > mascot.x && x < mascot.x + mascot.width &&
+            y + letterSize > mascot.y && y < mascot.y + mascot.height) {
+          return true; // Collision with mascot
+        }
+      }
+
+      // STRICT NO-OVERLAP: Check bounding box collision with existing letters
+      // Reject if any overlap OR distance < 120px (bounding box collision detection)
+      for (const pos of existingPositions) {
+        // Check for bounding box overlap
+        const overlap = !(x + letterSize <= pos.x || x >= pos.x + letterSize ||
+                         y + letterSize <= pos.y || y >= pos.y + letterSize);
+        if (overlap) {
+          return true; // Bounding box overlap detected
+        }
+
+        // Also check minimum distance (120px between centers)
+        const dx = Math.abs(x + letterSize/2 - (pos.x + letterSize/2));
+        const dy = Math.abs(y + letterSize/2 - (pos.y + letterSize/2));
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < minSpacing) {
+          return true; // Too close to existing letter
+        }
+      }
+
+      return false; // No collision
+    };
+
+    const floating = [];
+    const maxAttempts = 20; // Max 20 retries per letter (strict no-overlap rule)
+
+    for (const letter of letters) {
+      let x, y, attempts = 0;
+      let placed = false;
+
+      // Try to find a valid position with strict collision checking
+      while (!placed && attempts < maxAttempts) {
+        // Generate random position within safe bounds
+        x = Math.random() * (screenWidth - letterSize - 100) + 50;  // 50px margins
+        y = Math.random() * (screenHeight - letterSize - 300) + 150; // Account for HUD and bottom
+
+        // Check if this position is collision-free
+        if (!checkCollision(x, y, floating.map(f => ({ x: f.x, y: f.y })))) {
+          placed = true;
+        }
+        attempts++;
+      }
+
+      // If letter found a valid position, add it; otherwise skip it (reduce letter count)
+      if (placed) {
+        floating.push({
+          letter,
+          x,
+          y,
+          id: `${letter}-${Date.now()}-${Math.random()}`
+        });
+      } else {
+        console.warn(`Could not find collision-free spot for letter ${letter} after ${maxAttempts} attempts. Skipping this letter.`);
+        // Letter is skipped - round will have fewer letters if needed
+      }
+    }
+
+    // CRITICAL: Ensure all missing letters are placed (required for gameplay)
+    // If any missing letters were skipped, force place them in safe corners
+    for (const missingLetter of missing) {
+      if (!floating.some(f => f.letter === missingLetter)) {
+        console.warn(`CRITICAL: Missing letter ${missingLetter} was skipped! Forcing placement.`);
+        // Force place in a guaranteed safe corner
+        const safeX = screenWidth - letterSize - 100;
+        const safeY = screenHeight - letterSize - 150;
+        floating.push({
+          letter: missingLetter,
+          x: safeX,
+          y: safeY,
+          id: `${missingLetter}-forced-${Date.now()}`
+        });
+      }
+    }
+
+    return floating;
+  };
+
+  // Setup next word
+  const setupWord = () => {
+    if (currentWordIndex >= shuffledWords.length) {
+      setIsComplete(true);
+      return;
+    }
+
+    const word = shuffledWords[currentWordIndex];
+    const { visible, missing } = generateVisibleWord(word);
+    const floating = generateFloatingLetters(missing, word);
+
+    setVisibleWord(visible);
+    setMissingLetters(missing);
+    setFloatingLetters(floating);
+  };
+
+  // Handle letter click
+  const handleLetterClick = (clickedLetter: string, id: string) => {
+    if (missingLetters.includes(clickedLetter)) {
+      // Correct letter
+      const word = shuffledWords[currentWordIndex];
+      const newVisible = visibleWord.split('').map((char, i) =>
+        char === '_' && word[i] === clickedLetter ? clickedLetter : char
+      ).join('');
+
+      setVisibleWord(newVisible);
+      setScore(prev => prev + 1);
+
+      // Show happy mascot
+      setMascotReaction('happy');
+      setTimeout(() => setMascotReaction(null), 2500);
+
+      // Remove the letter from floating
+      setFloatingLetters(prev => prev.filter(l => l.id !== id));
+
+      // Remove from missing letters
+      setMissingLetters(prev => prev.filter(l => l !== clickedLetter));
+
+      // Check if word is complete
+      if (!newVisible.includes('_')) {
+        const newWordsCompleted = wordsCompleted + 1;
+
+        // Check if this is the 15th word (final completion)
+        if (currentWordIndex === 14) { // 0-based index, so 14 is the 15th word
+          // FINAL WORD COMPLETED - End game immediately
+          setWordsCompleted(newWordsCompleted);
+          onEarnStars(1); // Award the final star
+          setTimeout(() => {
+            setIsComplete(true);
+          }, 1500); // Brief delay to show completion
+        } else {
+          // Normal word completion - continue to next word
+          setWordsCompleted(newWordsCompleted);
+          // Earn 1 Lucky Star per completed word
+          onEarnStars(1);
+          setTimeout(() => {
+            setCurrentWordIndex(prev => prev + 1);
+            setupWord();
+          }, 1500);
+        }
+      }
+    } else {
+      // Wrong letter
+      setScore(prev => Math.max(0, prev - 1));
+      // Show sad mascot
+      setMascotReaction('sad');
+      setTimeout(() => setMascotReaction(null), 2500);
+      // Animate wrong letter (shake and disappear)
+      setFloatingLetters(prev => prev.filter(l => l.id !== id));
+    }
+  };
+
+  // Skip to next word
+  const skipWord = () => {
+    setCurrentWordIndex(prev => prev + 1);
+    setupWord();
+  };
+
+  // Reset game for new session
+  const resetGame = () => {
+    const shuffled = shuffleArray(ORIGINAL_WORDS);
+    setShuffledWords(shuffled);
+    setCurrentWordIndex(0);
+    setScore(0);
+    setWordsCompleted(0);
+    setIsComplete(false);
+    setMascotReaction(null);
+    setVisibleWord("");
+    setMissingLetters([]);
+    setFloatingLetters([]);
+  };
+
+  // Initialize shuffled words and first word
+  useEffect(() => {
+    // Shuffle words once per game session
+    const shuffled = shuffleArray(ORIGINAL_WORDS);
+    setShuffledWords(shuffled);
+    setCurrentWordIndex(0);
+    setScore(0);
+    setWordsCompleted(0);
+    setIsComplete(false);
+  }, []);
+
+  // Setup word when shuffledWords is ready
+  useEffect(() => {
+    if (shuffledWords.length > 0 && currentWordIndex < shuffledWords.length) {
+      setupWord();
+    }
+  }, [shuffledWords, currentWordIndex]);
+
+  return (
+    <div className="fixed inset-0 z-[70]">
+      <video className="absolute inset-0 w-full h-full object-cover" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game3.%20mp4?updatedAt=1759409518855" autoPlay muted loop playsInline preload="auto" />
+      <div className="absolute inset-0 bg-black/30" />
+
+      {/* Mascot Reaction Overlay - Only show during active gameplay */}
+      {!isComplete && mascotReaction && (
+        <div className="fixed z-[80] pointer-events-none" style={{
+          top: '50%',
+          [mascotReaction === 'happy' ? 'left' : 'right']: '20px',
+          transform: 'translateY(-50%)'
+        }}>
+          <img
+            src={mascotReaction === 'happy'
+              ? "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/MC%20VUI?updatedAt=1759478885545"
+              : "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/MC%20BU%E1%BB%92N?updatedAt=1759478885397"
+            }
+            alt={mascotReaction === 'happy' ? 'Happy Mascot' : 'Sad Mascot'}
+            className="w-96 h-96 object-contain"
+            style={{
+              animation: 'mascotZoom 2.5s ease-in-out'
+            }}
+          />
+        </div>
       )}
 
-      {/* Game Over Screen */}
-      {mode === "gameover" && (
-        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
-          <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
-            <div className="text-6xl mb-4">💥</div>
-            <h2 className="text-3xl font-bold mb-4 text-red-600">Game Over!</h2>
-            <p className="text-slate-700 mb-4">Bạn đã va chạm với chướng ngại vật!</p>
-            <p className="text-lg text-slate-700 mb-6">Điểm số: <span className="font-bold text-yellow-600">{starsEarned} ⭐</span></p>
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={startGame}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:scale-105 transition-transform"
-              >
-                🎮 Chơi Lại
-              </button>
-              <button
-                onClick={onClose}
-                className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
-              >
-                🏠 Thoát
-              </button>
-            </div>
+      {/* HUD - Only show during active gameplay */}
+      {!isComplete && (
+        <div className="absolute top-4 left-4 z-[80] flex items-center gap-4 text-white">
+          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">
+            Score: <span className="font-bold">{score}</span>
+          </div>
+          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">
+            Words: <span className="font-bold">{currentWordIndex + 1}/15</span>
           </div>
         </div>
       )}
 
-      {/* Win Screen */}
-      {mode === "win" && (
-        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
-          <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
-            <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-3xl font-bold mb-4 text-green-600">Chúc Mừng!</h2>
-            <p className="text-slate-700 mb-4">Bạn đã sống sót qua tất cả chướng ngại vật!</p>
-            <p className="text-lg text-slate-700 mb-6">Điểm số: <span className="font-bold text-yellow-600">{starsEarned} ⭐</span></p>
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={startGame}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:scale-105 transition-transform"
-              >
-                🎮 Chơi Lại
-              </button>
-              <button
-                onClick={onClose}
-                className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
-              >
-                🏠 Thoát
-              </button>
+      {/* Close button - Only show during active gameplay */}
+      {!isComplete && (
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-[80] px-4 py-2 rounded-xl bg-white/80 text-slate-900 font-semibold shadow hover:bg-white active:scale-95"
+        >
+          Close
+        </button>
+      )}
+
+      {/* Main game area - Only show during active gameplay */}
+      {!isComplete && (
+        <div ref={containerRef} className="relative z-10 h-full flex flex-col items-center justify-center text-white">
+
+          {/* Word display */}
+          <div className="mb-8 text-center">
+            <h2 className="text-3xl font-bold mb-2">Find the missing letters!</h2>
+            <div className="text-6xl font-mono font-bold tracking-wider bg-black/30 px-8 py-4 rounded-xl border border-white/30 backdrop-blur-md">
+              {visibleWord.split('').map((char, i) => (
+                <span key={i} className="inline-block mx-1">
+                  {char}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Skip button */}
+          <button
+            onClick={skipWord}
+            className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg active:scale-95 mb-4"
+          >
+            Skip Word
+          </button>
+        </div>
+      )}
+
+      {/* Floating letters - Only show during active gameplay */}
+      {!isComplete && floatingLetters.map(({letter, x, y, id}) => (
+        <button
+          key={id}
+          onClick={() => handleLetterClick(letter, id)}
+          className="fixed w-32 h-32 transition-transform hover:scale-110 active:scale-95 z-[75]"
+          style={{
+            left: `${x}px`,
+            top: `${y}px`,
+            animation: `oceanCurrentDrift ${2.5 + Math.random() * 1.5}s ease-in-out infinite`, // Slower, more gentle than before
+            animationDelay: `${Math.random() * 3}s`
+          }}
+        >
+          <img
+            src={OCEAN_LETTERS[letter]}
+            alt={letter}
+            className="w-full h-full object-contain drop-shadow-lg animate-ocean-glow"
+          />
+        </button>
+      ))}
+
+      {/* Completion screen */}
+      {isComplete && (
+        <div className="fixed inset-0 z-[85] bg-gradient-to-br from-cyan-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-md">
+          {/* Celebration animation - enhanced */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Rising bubbles - more intense */}
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={`bubble-${i}`}
+                className="absolute rounded-full bg-cyan-300/40 border-2 border-cyan-200/60 animate-celebration-bubble"
+                style={{
+                  left: `${10 + Math.random() * 80}%`,
+                  bottom: `-30px`,
+                  width: `${25 + Math.random() * 35}px`,
+                  height: `${25 + Math.random() * 35}px`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  animationDuration: `${2.5 + Math.random() * 2}s`
+                }}
+              />
+            ))}
+
+            {/* Enhanced sparkle effects */}
+            {[...Array(35)].map((_, i) => (
+              <div
+                key={`sparkle-${i}`}
+                className="absolute w-3 h-3 bg-yellow-200 rounded-full animate-celebration-sparkle shadow-lg"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 1.5}s`,
+                  animationDuration: `${1.5 + Math.random() * 1}s`
+                }}
+              />
+            ))}
+
+            {/* Wave glow effect */}
+            <div className="absolute inset-0 animate-wave-glow">
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 via-blue-400/15 to-cyan-400/10 blur-3xl "></div>
+            </div>
+          </div>
+
+
+          <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+            {/* Video background for celebration */}
+            <video className="absolute inset-0 w-full h-full object-cover rounded-3xl" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game3.%20mp4?updatedAt=1759409518855" autoPlay muted loop playsInline preload="auto" />
+            <div className="absolute inset-0 bg-black/60 rounded-3xl" />
+            <div className="relative z-10 w-full max-w-2xl bg-white/10 backdrop-blur-md rounded-3xl border-2 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-10 text-center animate-scale-in">
+              <div className="mb-8">
+                <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white drop-shadow-lg leading-tight">
+                  Congratulations!<br/>
+                  You have completed the ocean adventure.
+                </h2>
+                <div className="text-3xl text-cyan-200 font-semibold mb-6">🌊✨</div>
+              </div>
+
+              <div className="mb-10">
+                <div className="inline-flex items-center gap-4 px-8 py-5 rounded-2xl bg-gradient-to-r from-yellow-400/90 via-orange-400/90 to-yellow-500/90 text-white font-bold text-2xl shadow-2xl backdrop-blur-sm border border-yellow-300/50 ">
+                  <span className="text-4xl animate-spin">⭐</span>
+                  <span className="mx-2">{wordsCompleted} Lucky Stars Earned!</span>
+                  <span className="text-4xl animate-spin" style={{animationDirection: 'reverse'}}>⭐</span>
+                </div>
+              </div>
+
+              <div className="flex gap-6 justify-center">
+                <button
+                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-600 text-white font-bold text-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 "
+                  onClick={() => {
+                    resetGame();
+                    setTimeout(() => {
+                      if (shuffledWords.length > 0) {
+                        setupWord();
+                      }
+                    }, 100);
+                  }}
+                >
+                  Play Again
+                </button>
+                <button
+                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-slate-600 to-slate-700 text-white font-bold text-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                  onClick={onClose}
+                >
+                  Exit
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       <style>{`
-        @keyframes runner-glow {
-          0%, 100% { filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.6)); }
-          50% { filter: drop-shadow(0 0 16px rgba(6, 182, 212, 0.9)); }
-        }
-        .animate-runner-glow { animation: runner-glow 2s ease-in-out infinite; }
+        @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+        .animate-fade-in { animation: fade-in .25s ease-out; }
+        @keyframes scale-in { from { opacity: 0; transform: translateY(8px) scale(.96) } to { opacity: 1; transform: translateY(0) scale(1) } }
+        .animate-scale-in { animation: scale-in .25s ease-out; }
 
-        @keyframes runner-swim {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
+        /* Mascot reactions */
+        @keyframes mascotZoom {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+          100% { transform: scale(1); }
         }
-        .animate-runner-swim { animation: runner-swim 1.5s ease-in-out infinite; }
 
-        @keyframes enter {
-          0% { transform: scale(0.8); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .animate-enter { animation: enter 0.3s ease-out; }
-
-        @keyframes star-sparkle {
+        /* Celebration animations */
+        @keyframes mascot-celebration {
           0%, 100% { transform: scale(1) rotate(0deg); }
-          25% { transform: scale(1.2) rotate(90deg); }
-          50% { transform: scale(1.4) rotate(180deg); }
-          75% { transform: scale(1.2) rotate(270deg); }
+          25% { transform: scale(1.1) rotate(-5deg); }
+          50% { transform: scale(1.2) rotate(0deg); }
+          75% { transform: scale(1.1) rotate(5deg); }
         }
-        .animate-star-sparkle { animation: star-sparkle 1.5s ease-in-out infinite; }
+        .animate-mascot-celebration { animation: mascot-celebration 2s ease-in-out infinite; }
+
+        @keyframes mascot-bounce {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); }
+          25% { transform: translate(-50%, -50%) scale(1.05) translateY(-10px); }
+          50% { transform: translate(-50%, -50%) scale(1.1) translateY(-20px); }
+          75% { transform: translate(-50%, -50%) scale(1.05) translateY(-10px); }
+        }
+        .animate-mascot-bounce { animation: mascot-bounce 2s ease-in-out infinite; }
+
+        @keyframes celebration-bubble {
+          0% { transform: translateY(0) scale(0.8); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
+        }
+        .animate-celebration-bubble { animation: celebration-bubble linear infinite; }
+
+        @keyframes celebration-sparkle {
+          0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+          50% { transform: scale(1) rotate(180deg); opacity: 1; }
+        }
+        .animate-celebration-sparkle { animation: celebration-sparkle ease-in-out infinite; }
+
+        @keyframes wave-glow {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        .animate-wave-glow { animation: wave-glow 3s ease-in-out infinite; }
+
+        /* Floating letter animations - gentle seaweed/bubble drift */
+        @keyframes oceanCurrentDrift {
+          0% {
+            transform: translateX(0px) translateY(0px) rotate(0deg);
+          }
+          25% {
+            transform: translateX(3px) translateY(-2px) rotate(0.5deg);
+          }
+          50% {
+            transform: translateX(-2px) translateY(-1px) rotate(-0.3deg);
+          }
+          75% {
+            transform: translateX(1px) translateY(3px) rotate(0.2deg);
+          }
+          100% {
+            transform: translateX(0px) translateY(0px) rotate(0deg);
+          }
+        }
+
+        /* Ocean glow effect for floating letters - subtle cyan pulsing */
+        @keyframes oceanGlow {
+          0%, 100% {
+            filter: drop-shadow(0 0 8px rgba(103, 232, 249, 0.3)) drop-shadow(0 0 16px rgba(103, 232, 249, 0.1));
+          }
+          50% {
+            filter: drop-shadow(0 0 12px rgba(103, 232, 249, 0.5)) drop-shadow(0 0 24px rgba(103, 232, 249, 0.2));
+          }
+        }
+        .animate-ocean-glow {
+          animation: oceanGlow 4s ease-in-out infinite;
+        }
+
+        /* Firework animation */
+        @keyframes firework {
+          0% {
+            transform: scale(0) rotate(0deg);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1) rotate(180deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(0) rotate(360deg);
+            opacity: 0;
+            display: none;
+          }
+        }
+
+        .animate-firework {
+          animation: firework 2s ease-out infinite;
+        }
       `}</style>
     </div>
   );
 }
+
 // Game 3: Guess the Ocean Creature (simple)
 function GameGuess({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: number) => void }) {
   const pool = ["octopus", "crab", "dolphin", "turtle", "shark", "seahorse"];
@@ -791,10 +1475,23 @@ const G1_CREATURES: G1Creature[] = [
   { key: "turtle", name: "Sea turtle", img: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/21.png?updatedAt=1759317103380", shadow: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/22.png?updatedAt=1759333630260" },
   { key: "seahorse", name: "Seahorse", img: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/33.png?updatedAt=1759317101589", shadow: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/31.png?updatedAt=1759333630651" },
   { key: "squid", name: "Squid", img: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/36.png?updatedAt=1759317100931", shadow: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/29.png?updatedAt=1759333630361" },
-  { key: "fish", name: "Fish", img: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/37.png?updatedAt=1759317103184", shadow: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/28.png?updatedAt=1759333631132" },
+  { key: "fish", name: "Angelfish", img: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/37.png?updatedAt=1759317103184", shadow: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/28.png?updatedAt=1759333631132" },
   { key: "jellyfish", name: "Jellyfish", img: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N%20(1).png?updatedAt=1759335300432", shadow: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/23.png?updatedAt=1759333630647" },
   { key: "dolphin", name: "Dolphin", img: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/25%20ma%CC%80u.png?updatedAt=1759340404978", shadow: "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/25.png?updatedAt=1759335775054" },
 ];
+
+const G1_CREATURE_DESCRIPTIONS: Record<string, string> = {
+  whale: "A blue whale's heart is the size of a car, but when it dives, it beats only twice a minute—like it's super chill. Baby whales chug 200 liters of milk every day, basically living on milkshakes. Their poop is bright orange and floats, which sounds gross but helps the planet. And their songs? Louder than your Wi-Fi signal!",
+  shell: "Seashells are like ocean houses for snails and clams, and they keep growing as the animal gets bigger—no moving trucks needed. Each shell is one-of-a-kind, and some even make pearls. And that 'ocean sound' you hear when you hold a shell? Sorry, it's just your own blood echoing.",
+  starfish: "Starfish aren't really fish—they don't even have blood or fins. Instead, they use seawater as their 'fuel.' Lose an arm? No problem, they just grow another, sometimes even a whole new body. Oh, and they eat by throwing their stomachs out of their mouths—imagine doing that at a pizza party.",
+  crab: "Crabs walk sideways like they're doing a silly dance, but actually, they can move in any direction. Some are tiny, others are huge coconut-smashers. When they outgrow their shells, they're naked for a while—basically 'crab in pajamas.' Some even decorate themselves with seaweed, like underwater fashion models.",
+  turtle: "Sea turtles have been around since dinosaur times and can live for more than 100 years—basically the grandparents of the ocean. Baby turtles race to the sea using the moon as their GPS, but sometimes get lost and head to a parking lot instead. And no, they can't hide in their shells like cartoons, but they do travel across entire oceans just to come back home and lay eggs.",
+  seahorse: "Seahorses are such poor swimmers that if there were a contest for 'the slowest in the ocean,' they would almost always win. Yet they've thrived for millions of years – the ultimate example of 'slow living in the sea.'",
+  squid: "Squids have three hearts. Two pump blood to the gills, and one pumps it to the rest of the body. Which means when they get heartbroken, it hurts three times as much.",
+  jellyfish: "Jellyfish have no brain, no heart, no bones… and yet they've been around for over 500 million years – way longer than dinosaurs. Kind of like, 'no brain, no heart, no problems.'",
+  fish: "Angelfish in the wild can actually 'change gender'! If a dominant male is missing from the group, a female can transform into a male to take on the leading role. This mechanism helps the school of fish maintain reproductive balance.",
+  dolphin: "Dolphins sometimes 'store' air bubbles just to play with them like balloons underwater. They also enjoy teasing sea turtles, much like mischievous kids in a classroom.",
+};
 
 function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
   const [placed, setPlaced] = useState<Record<string, number | null>>(() => Object.fromEntries(G1_CREATURES.map((c) => [c.key, null])));
@@ -888,7 +1585,7 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
 
   return (
     <div className="fixed inset-0 z-[80]">
-      <video className="absolute inset-0 w-full h-full object-cover" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N.mp4?updatedAt=1759335373305" autoPlay muted loop playsInline preload="auto" />
+      <video className="absolute inset-0 w-full h-full object-cover" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game1.%20mp4?updatedAt=1759396550237" autoPlay muted loop playsInline preload="auto" />
       <div className="absolute inset-0 bg-black/20" />
       <div className="relative z-10 flex flex-col h-full text-white">
         <div className="flex items-center justify-between p-4">
@@ -907,7 +1604,7 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
               return (
                 <div key={c.key} className={`relative min-w-[96px] h-24 md:min-w-[120px] md:h-28 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md grid place-items-center select-none ${wrongKey === c.key ? 'animate-g1-shake' : ''}`}>
                   {(placed[c.key] ?? null) === null ? (
-                    <img src={c.img} alt={c.name} className="max-h-[80%] max-w-[80%] cursor-grab active:cursor-grabbing drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]" onPointerDown={startDrag(c.key)} draggable={false} />
+                    <img src={c.img} alt={c.name} className="w-full h-full object-contain cursor-grab active:cursor-grabbing drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]" onPointerDown={startDrag(c.key)} draggable={false} />
                   ) : (
                     <div className="text-white/60 text-sm">Placed</div>
                   )}
@@ -967,8 +1664,8 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
               {(() => { const c = G1_CREATURES.find((cc) => cc.key === infoKey)!; return (
                 <div className="grid gap-4">
                   <img src={c.img} alt={c.name} className="w-48 h-48 object-contain justify-self-center drop-shadow" />
-                  <h4 className="text-xl font-bold text-center">{c.name}</h4>
-                  <p className="text-slate-700 text-center">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                  <h4 className="text-xl font-bold text-center">{infoKey === "fish" ? "Angelfish" : c.name}</h4>
+                  <p className="text-slate-700 text-center">{G1_CREATURE_DESCRIPTIONS[infoKey!] || "Description not found."}</p>
                   <button className="justify-self-center px-4 py-2 rounded-xl bg-slate-900 text-white" onClick={() => setInfoKey(null)}>Close</button>
                 </div>
               ); })()}
