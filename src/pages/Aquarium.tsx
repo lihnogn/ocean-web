@@ -101,32 +101,20 @@ const Aquarium = () => {
             
             {/* Avatar Fish */}
             <div className="relative flex items-center justify-center py-12">
-              <img 
-                src={avatarFish} 
-                alt="Your Avatar Fish" 
+              <img
+                src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N%20(2).gif?updatedAt=1759359847482"
+                alt="Ocean Adventure Avatar"
                 className="w-48 h-48 md:w-64 md:h-64 animate-swim drop-shadow-[0_0_30px_rgba(102,221,255,1)]"
               />
             </div>
 
             {/* Info Cards */}
             <div className="grid md:grid-cols-3 gap-4 mt-8">
-              <div className="glass-effect rounded-xl p-6 text-center border border-white/10">
-                <Sparkles className="w-8 h-8 text-yellow-400 mx-auto mb-2 animate-sparkle" />
-                <h3 className="font-bold text-lg mb-1">Daily Reward</h3>
-                <p className="text-sm text-white/70">+1 Shiny Star every login</p>
-              </div>
-
-              <div className="glass-effect rounded-xl p-6 text-center border border-white/10">
-                <div className="text-3xl mb-2">🎮</div>
-                <h3 className="font-bold text-lg mb-1">Mini Games</h3>
-                <p className="text-sm text-white/70">Coming soon!</p>
-              </div>
-
-              <div className="glass-effect rounded-xl p-6 text-center border border-white/10">
-                <div className="text-3xl mb-2">🛍️</div>
-                <h3 className="font-bold text-lg mb-1">Ocean Shop</h3>
-                <p className="text-sm text-white/70">Customize your aquarium</p>
-              </div>
+              <img
+                src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N%20(2).gif?updatedAt=1759359847482"
+                alt="Ocean Adventure Content"
+                className="w-full h-48 md:h-32 object-cover rounded-xl border border-white/10"
+              />
             </div>
           </div>
 

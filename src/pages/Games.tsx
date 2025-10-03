@@ -18,15 +18,14 @@ const GAME_META: Record<
   },
   game2: {
     title: "Dodge the Hunter",
-    description:
-      "Move the fish, dodge hooks and nets, and collect sparkling stars.",
-    gradient: "from-indigo-200/70 via-sky-200/70 to-cyan-200/70",
-    accent: "shadow-cyan-400/50",
+    description: "Auto-run and avoid obstacles while collecting lucky stars.",
+    gradient: "from-teal-200/70 via-cyan-200/70 to-sky-200/70",
+    accent: "shadow-teal-400/50",
   },
   game3: {
-    title: "Guess the Ocean Creature",
+    title: "Ocean Word Hunt",
     description:
-      "Type the creature's name. Use hints (cost stars) to reveal letters.",
+      "Dive into ocean currents! Find missing letters in 15 ocean words by clicking floating treasures. Complete each word to earn Lucky Stars!",
     gradient: "from-teal-200/70 via-cyan-200/70 to-sky-200/70",
     accent: "shadow-teal-400/50",
   },
@@ -85,7 +84,7 @@ const Games = () => {
           />
         ))}
         {/* soft light rays */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.18),rgba(255,255,255,0)_60%)] mix-blend-screen animate-pulse-slow" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.18),rgba(255,255,255,0)_60%)] mix-blend-screen -slow" />
       </div>
 
       {/* Sparkle particles on star gain */}
@@ -165,9 +164,7 @@ const Games = () => {
         />
       )}
       {activeGame === 'game3' && (
-        <GameModal
-          gameKey={activeGame}
-          meta={GAME_META[activeGame]}
+        <OceanWordHunt
           onClose={() => setActiveGame(null)}
           onEarnStars={(n, x, y) => addStars(n, x, y)}
         />
@@ -179,7 +176,7 @@ const Games = () => {
         .animate-float-slow { animation: float-slow linear infinite; }
 
         @keyframes pulse-slow { 0%, 100% { opacity: .35 } 50% { opacity: .55 } }
-        .animate-pulse-slow { animation: pulse-slow 5s ease-in-out infinite; }
+        .-slow { animation: pulse-slow 5s ease-in-out infinite; }
 
         @keyframes sparkle { 0% { transform: translate(-50%, -50%) scale(.6) rotate(0deg); opacity: 1 } 80% { opacity: .9 } 100% { transform: translate(-50%, -180%) scale(0) rotate(180deg); opacity: 0 } }
         .animate-sparkle { animation: sparkle .9s ease-out forwards; }
@@ -716,7 +713,7 @@ function GameCard({
             className="relative inline-flex items-center justify-center w-full md:w-auto px-5 py-3 rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-900 font-semibold shadow-[0_10px_30px_rgba(16,185,129,0.45)] transition-transform duration-200 active:scale-95 hover:scale-[1.03] focus:scale-[1.03] focus:outline-none"
           >
             <span className="relative z-10">Start</span>
-            <span className="absolute inset-0 rounded-2xl ring-2 ring-white/60 animate-pulse-slow" />
+            <span className="absolute inset-0 rounded-2xl ring-2 ring-white/60 -slow" />
           </button>
         </div>
       </div>
@@ -751,9 +748,12 @@ function TutorialModal({
         "Exit is always available in the top-right.",
       ];
     return [
-      "Type the creature name.",
-      "Use Hint to reveal a letter (costs 1 star).",
-      "Submit to check and earn stars.",
+      "Explore 15 different ocean-themed words.",
+      "Each word has 1-2 missing letters.",
+      "Click the floating letter treasures to complete words.",
+      "Complete each word to earn 1 Lucky Star!",
+      "Letters gently drift like ocean currents.",
+      "Letters won't overlap with each other or the word display.",
     ];
   }, [gameKey]);
 
@@ -794,39 +794,624 @@ function TutorialModal({
   );
 }
 
-// Modal: Game container with lightweight placeholder logic for preview
-function GameModal({
-  gameKey,
-  meta,
-  onClose,
-  onEarnStars,
-}: {
-  gameKey: GameKey;
-  meta: { title: string };
-  onClose: () => void;
-  onEarnStars: (n: number, x?: number, y?: number) => void;
-}) {
+// ===== Ocean Word Hunt Game =====
+function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [wordsCompleted, setWordsCompleted] = useState(0);
+  const [visibleWord, setVisibleWord] = useState<string>("");
+  const [missingLetters, setMissingLetters] = useState<string[]>([]);
+  const [floatingLetters, setFloatingLetters] = useState<Array<{letter: string, x: number, y: number, id: string}>>([]);
+  const [isComplete, setIsComplete] = useState(false);
+  const [mascotReaction, setMascotReaction] = useState<'happy' | 'sad' | null>(null);
+  const [shuffledWords, setShuffledWords] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const ORIGINAL_WORDS = ["OCEAN", "WAVE", "SHELL", "CORAL", "FISH", "WHALE", "TURTLE", "DOLPHIN", "SHARK", "PEARL", "SEAWEED", "ISLAND", "BOAT", "STARFISH", "CRAB"];
+
+  // Shuffle words for random order (only once per game session)
+  const shuffleArray = (array: string[]) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const OCEAN_LETTERS: Record<string, string> = {
+    "A": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/7.png?updatedAt=1759403594254",
+    "B": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/8.png?updatedAt=1759403594750",
+    "C": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/9.png?updatedAt=1759403594723",
+    "D": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/10.png?updatedAt=1759403594721",
+    "E": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/11.png?updatedAt=1759403594521",
+    "F": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/12.png?updatedAt=1759403594597",
+    "G": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/13.png?updatedAt=1759403594675",
+    "H": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/14.png?updatedAt=1759403594493",
+    "I": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/15.png?updatedAt=1759403594573",
+    "J": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/16.png?updatedAt=1759403594648",
+    "K": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/17.png?updatedAt=1759403594346",
+    "L": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/18.png?updatedAt=1759403594701",
+    "M": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/19.png?updatedAt=1759403594685",
+    "N": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/20.png?updatedAt=1759403594694",
+    "O": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/21.png?updatedAt=1759403594706",
+    "P": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/22.png?updatedAt=1759403594857",
+    "Q": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/23.png?updatedAt=1759403594716",
+    "R": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/24.png?updatedAt=1759403594736",
+    "S": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/25.png?updatedAt=1759403594774",
+    "T": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/26.png?updatedAt=1759403594693",
+    "U": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/27.png?updatedAt=1759403594761",
+    "V": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/28.png?updatedAt=1759403594749",
+    "W": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/29.png?updatedAt=1759403594775",
+    "X": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/30.png?updatedAt=1759403594660",
+    "Y": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/31.png?updatedAt=1759403594667",
+    "Z": "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ABC/32.png?updatedAt=1759403594662"
+  };
+
+  // Generate visible word with hidden letters
+  const generateVisibleWord = (word: string) => {
+    const wordLength = word.length;
+    let hiddenCount = wordLength <= 3 ? 1 : Math.random() < 0.6 ? 1 : 2;
+
+    const positionsToHide = [];
+    while (positionsToHide.length < hiddenCount) {
+      const pos = Math.floor(Math.random() * wordLength);
+      if (!positionsToHide.includes(pos)) {
+        positionsToHide.push(pos);
+      }
+    }
+
+    const missing = positionsToHide.map(pos => word[pos]);
+    const visible = word.split('').map((letter, i) =>
+      positionsToHide.includes(i) ? '_' : letter
+    ).join('');
+
+    return { visible, missing };
+  };
+
+  // Generate floating letters (unique, non-overlapping with collision detection)
+  const generateFloatingLetters = (missing: string[], word: string) => {
+    const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+    // Ensure UNIQUE letters only - no duplicates in the same round
+    const usedLetters = new Set(missing); // Start with missing letters
+    const availableLetters = allLetters.filter(letter => !usedLetters.has(letter));
+
+    // Add correct letters first
+    const letters = [...missing];
+
+    // Add unique decoy letters (no duplicates)
+    const decoyCount = Math.min(10, availableLetters.length); // Limit decoys to keep it manageable
+    const selectedDecoys = [];
+
+    // Shuffle available letters to randomize selection
+    for (let i = availableLetters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availableLetters[i], availableLetters[j]] = [availableLetters[j], availableLetters[i]];
+    }
+
+    // Take the first decoyCount letters (guaranteed unique)
+    for (let i = 0; i < decoyCount && i < availableLetters.length; i++) {
+      selectedDecoys.push(availableLetters[i]);
+    }
+
+    letters.push(...selectedDecoys);
+
+    // Final shuffle of all letters
+    for (let i = letters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [letters[i], letters[j]] = [letters[j], letters[i]];
+    }
+
+    // COLLISION-BASED PLACEMENT SYSTEM
+    // Each letter gets a unique position with minimum spacing
+
+    const letterSize = 120; // 120px for better spacing
+    const minSpacing = 120; // 120px minimum distance between letter centers
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    // Central zone: middle 30% of screen (reserved for word + UI)
+    const centralZone = {
+      x: screenWidth * 0.35, // Start at 35% from left (centered 30%)
+      y: screenHeight * 0.35, // Start at 35% from top (centered 30%)
+      width: screenWidth * 0.3, // 30% of screen width
+      height: screenHeight * 0.3 // 30% of screen height
+    };
+
+    // Mascot areas to avoid
+    const mascotAreas = [
+      { x: 0, y: screenHeight / 2 - 100, width: 200, height: 200 }, // Left mascot
+      { x: screenWidth - 200, y: screenHeight / 2 - 100, width: 200, height: 200 } // Right mascot
+    ];
+
+    const checkCollision = (x: number, y: number, existingPositions: Array<{x: number, y: number}>) => {
+      // Check central zone exclusion (30% middle area)
+      if (x + letterSize > centralZone.x && x < centralZone.x + centralZone.width &&
+          y + letterSize > centralZone.y && y < centralZone.y + centralZone.height) {
+        return true; // Collision with central zone
+      }
+
+      // Check mascot areas
+      for (const mascot of mascotAreas) {
+        if (x + letterSize > mascot.x && x < mascot.x + mascot.width &&
+            y + letterSize > mascot.y && y < mascot.y + mascot.height) {
+          return true; // Collision with mascot
+        }
+      }
+
+      // STRICT NO-OVERLAP: Check bounding box collision with existing letters
+      // Reject if any overlap OR distance < 120px (bounding box collision detection)
+      for (const pos of existingPositions) {
+        // Check for bounding box overlap
+        const overlap = !(x + letterSize <= pos.x || x >= pos.x + letterSize ||
+                         y + letterSize <= pos.y || y >= pos.y + letterSize);
+        if (overlap) {
+          return true; // Bounding box overlap detected
+        }
+
+        // Also check minimum distance (120px between centers)
+        const dx = Math.abs(x + letterSize/2 - (pos.x + letterSize/2));
+        const dy = Math.abs(y + letterSize/2 - (pos.y + letterSize/2));
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < minSpacing) {
+          return true; // Too close to existing letter
+        }
+      }
+
+      return false; // No collision
+    };
+
+    const floating = [];
+    const maxAttempts = 20; // Max 20 retries per letter (strict no-overlap rule)
+
+    for (const letter of letters) {
+      let x, y, attempts = 0;
+      let placed = false;
+
+      // Try to find a valid position with strict collision checking
+      while (!placed && attempts < maxAttempts) {
+        // Generate random position within safe bounds
+        x = Math.random() * (screenWidth - letterSize - 100) + 50;  // 50px margins
+        y = Math.random() * (screenHeight - letterSize - 300) + 150; // Account for HUD and bottom
+
+        // Check if this position is collision-free
+        if (!checkCollision(x, y, floating.map(f => ({ x: f.x, y: f.y })))) {
+          placed = true;
+        }
+        attempts++;
+      }
+
+      // If letter found a valid position, add it; otherwise skip it (reduce letter count)
+      if (placed) {
+        floating.push({
+          letter,
+          x,
+          y,
+          id: `${letter}-${Date.now()}-${Math.random()}`
+        });
+      } else {
+        console.warn(`Could not find collision-free spot for letter ${letter} after ${maxAttempts} attempts. Skipping this letter.`);
+        // Letter is skipped - round will have fewer letters if needed
+      }
+    }
+
+    // CRITICAL: Ensure all missing letters are placed (required for gameplay)
+    // If any missing letters were skipped, force place them in safe corners
+    for (const missingLetter of missing) {
+      if (!floating.some(f => f.letter === missingLetter)) {
+        console.warn(`CRITICAL: Missing letter ${missingLetter} was skipped! Forcing placement.`);
+        // Force place in a guaranteed safe corner
+        const safeX = screenWidth - letterSize - 100;
+        const safeY = screenHeight - letterSize - 150;
+        floating.push({
+          letter: missingLetter,
+          x: safeX,
+          y: safeY,
+          id: `${missingLetter}-forced-${Date.now()}`
+        });
+      }
+    }
+
+    return floating;
+  };
+
+  // Setup next word
+  const setupWord = () => {
+    if (currentWordIndex >= shuffledWords.length) {
+      setIsComplete(true);
+      return;
+    }
+
+    const word = shuffledWords[currentWordIndex];
+    const { visible, missing } = generateVisibleWord(word);
+    const floating = generateFloatingLetters(missing, word);
+
+    setVisibleWord(visible);
+    setMissingLetters(missing);
+    setFloatingLetters(floating);
+  };
+
+  // Handle letter click
+  const handleLetterClick = (clickedLetter: string, id: string) => {
+    if (missingLetters.includes(clickedLetter)) {
+      // Correct letter
+      const word = shuffledWords[currentWordIndex];
+      const newVisible = visibleWord.split('').map((char, i) =>
+        char === '_' && word[i] === clickedLetter ? clickedLetter : char
+      ).join('');
+
+      setVisibleWord(newVisible);
+      setScore(prev => prev + 1);
+
+      // Show happy mascot
+      setMascotReaction('happy');
+      setTimeout(() => setMascotReaction(null), 2500);
+
+      // Remove the letter from floating
+      setFloatingLetters(prev => prev.filter(l => l.id !== id));
+
+      // Remove from missing letters
+      setMissingLetters(prev => prev.filter(l => l !== clickedLetter));
+
+      // Check if word is complete
+      if (!newVisible.includes('_')) {
+        const newWordsCompleted = wordsCompleted + 1;
+
+        // Check if this is the 15th word (final completion)
+        if (currentWordIndex === 14) { // 0-based index, so 14 is the 15th word
+          // FINAL WORD COMPLETED - End game immediately
+          setWordsCompleted(newWordsCompleted);
+          onEarnStars(1); // Award the final star
+          setTimeout(() => {
+            setIsComplete(true);
+          }, 1500); // Brief delay to show completion
+        } else {
+          // Normal word completion - continue to next word
+          setWordsCompleted(newWordsCompleted);
+          // Earn 1 Lucky Star per completed word
+          onEarnStars(1);
+          setTimeout(() => {
+            setCurrentWordIndex(prev => prev + 1);
+            setupWord();
+          }, 1500);
+        }
+      }
+    } else {
+      // Wrong letter
+      setScore(prev => Math.max(0, prev - 1));
+      // Show sad mascot
+      setMascotReaction('sad');
+      setTimeout(() => setMascotReaction(null), 2500);
+      // Animate wrong letter (shake and disappear)
+      setFloatingLetters(prev => prev.filter(l => l.id !== id));
+    }
+  };
+
+  // Skip to next word
+  const skipWord = () => {
+    setCurrentWordIndex(prev => prev + 1);
+    setupWord();
+  };
+
+  // Reset game for new session
+  const resetGame = () => {
+    const shuffled = shuffleArray(ORIGINAL_WORDS);
+    setShuffledWords(shuffled);
+    setCurrentWordIndex(0);
+    setScore(0);
+    setWordsCompleted(0);
+    setIsComplete(false);
+    setMascotReaction(null);
+    setVisibleWord("");
+    setMissingLetters([]);
+    setFloatingLetters([]);
+  };
+
+  // Initialize shuffled words and first word
+  useEffect(() => {
+    // Shuffle words once per game session
+    const shuffled = shuffleArray(ORIGINAL_WORDS);
+    setShuffledWords(shuffled);
+    setCurrentWordIndex(0);
+    setScore(0);
+    setWordsCompleted(0);
+    setIsComplete(false);
+  }, []);
+
+  // Setup word when shuffledWords is ready
+  useEffect(() => {
+    if (shuffledWords.length > 0 && currentWordIndex < shuffledWords.length) {
+      setupWord();
+    }
+  }, [shuffledWords, currentWordIndex]);
+
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-      <div className="relative z-10 w-[96%] max-w-4xl rounded-3xl border border-white/25 bg-gradient-to-b from-white/70 to-white/40 p-4 md:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.5)] animate-scale-in">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-2xl font-bold text-slate-900">{meta.title}</h3>
-          <button className="px-3 py-1.5 rounded-xl bg-white/80 hover:bg-white text-slate-900" onClick={onClose}>
-            Close
+    <div className="fixed inset-0 z-[70]">
+      <video className="absolute inset-0 w-full h-full object-cover" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game3.%20mp4?updatedAt=1759409518855" autoPlay muted loop playsInline preload="auto" />
+      <div className="absolute inset-0 bg-black/30" />
+
+      {/* Mascot Reaction Overlay - Only show during active gameplay */}
+      {!isComplete && mascotReaction && (
+        <div className="fixed z-[80] pointer-events-none" style={{
+          top: '50%',
+          [mascotReaction === 'happy' ? 'left' : 'right']: '20px',
+          transform: 'translateY(-50%)'
+        }}>
+          <img
+            src={mascotReaction === 'happy'
+              ? "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/MC%20VUI?updatedAt=1759478885545"
+              : "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/MC%20BU%E1%BB%92N?updatedAt=1759478885397"
+            }
+            alt={mascotReaction === 'happy' ? 'Happy Mascot' : 'Sad Mascot'}
+            className="w-96 h-96 object-contain"
+            style={{
+              animation: 'mascotZoom 2.5s ease-in-out'
+            }}
+          />
+        </div>
+      )}
+
+      {/* HUD - Only show during active gameplay */}
+      {!isComplete && (
+        <div className="absolute top-4 left-4 z-[80] flex items-center gap-4 text-white">
+          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">
+            Score: <span className="font-bold">{score}</span>
+          </div>
+          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">
+            Words: <span className="font-bold">{currentWordIndex + 1}/15</span>
+          </div>
+        </div>
+      )}
+
+      {/* Close button - Only show during active gameplay */}
+      {!isComplete && (
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-[80] px-4 py-2 rounded-xl bg-white/80 text-slate-900 font-semibold shadow hover:bg-white active:scale-95"
+        >
+          Close
+        </button>
+      )}
+
+      {/* Main game area - Only show during active gameplay */}
+      {!isComplete && (
+        <div ref={containerRef} className="relative z-10 h-full flex flex-col items-center justify-center text-white">
+
+          {/* Word display */}
+          <div className="mb-8 text-center">
+            <h2 className="text-3xl font-bold mb-2">Find the missing letters!</h2>
+            <div className="text-6xl font-mono font-bold tracking-wider bg-black/30 px-8 py-4 rounded-xl border border-white/30 backdrop-blur-md">
+              {visibleWord.split('').map((char, i) => (
+                <span key={i} className="inline-block mx-1">
+                  {char}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Skip button */}
+          <button
+            onClick={skipWord}
+            className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg active:scale-95 mb-4"
+          >
+            Skip Word
           </button>
         </div>
-        <div className="rounded-2xl overflow-hidden border border-white/30 bg-white/60">
-          {gameKey === "game2" && <GameDodge onEarnStars={onEarnStars} />}
-          {gameKey === "game3" && <GameGuess onEarnStars={onEarnStars} />}
+      )}
+
+      {/* Floating letters - Only show during active gameplay */}
+      {!isComplete && floatingLetters.map(({letter, x, y, id}) => (
+        <button
+          key={id}
+          onClick={() => handleLetterClick(letter, id)}
+          className="fixed w-32 h-32 transition-transform hover:scale-110 active:scale-95 z-[75]"
+          style={{
+            left: `${x}px`,
+            top: `${y}px`,
+            animation: `oceanCurrentDrift ${2.5 + Math.random() * 1.5}s ease-in-out infinite`, // Slower, more gentle than before
+            animationDelay: `${Math.random() * 3}s`
+          }}
+        >
+          <img
+            src={OCEAN_LETTERS[letter]}
+            alt={letter}
+            className="w-full h-full object-contain drop-shadow-lg animate-ocean-glow"
+          />
+        </button>
+      ))}
+
+      {/* Completion screen */}
+      {isComplete && (
+        <div className="fixed inset-0 z-[85] bg-gradient-to-br from-cyan-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-md">
+          {/* Celebration animation - enhanced */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Rising bubbles - more intense */}
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={`bubble-${i}`}
+                className="absolute rounded-full bg-cyan-300/40 border-2 border-cyan-200/60 animate-celebration-bubble"
+                style={{
+                  left: `${10 + Math.random() * 80}%`,
+                  bottom: `-30px`,
+                  width: `${25 + Math.random() * 35}px`,
+                  height: `${25 + Math.random() * 35}px`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  animationDuration: `${2.5 + Math.random() * 2}s`
+                }}
+              />
+            ))}
+
+            {/* Enhanced sparkle effects */}
+            {[...Array(35)].map((_, i) => (
+              <div
+                key={`sparkle-${i}`}
+                className="absolute w-3 h-3 bg-yellow-200 rounded-full animate-celebration-sparkle shadow-lg"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 1.5}s`,
+                  animationDuration: `${1.5 + Math.random() * 1}s`
+                }}
+              />
+            ))}
+
+            {/* Wave glow effect */}
+            <div className="absolute inset-0 animate-wave-glow">
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 via-blue-400/15 to-cyan-400/10 blur-3xl "></div>
+            </div>
+          </div>
+
+
+          <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+            {/* Video background for celebration */}
+            <video className="absolute inset-0 w-full h-full object-cover rounded-3xl" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game3.%20mp4?updatedAt=1759409518855" autoPlay muted loop playsInline preload="auto" />
+            <div className="absolute inset-0 bg-black/60 rounded-3xl" />
+            <div className="relative z-10 w-full max-w-2xl bg-white/10 backdrop-blur-md rounded-3xl border-2 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-10 text-center animate-scale-in">
+              <div className="mb-8">
+                <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white drop-shadow-lg leading-tight">
+                  Congratulations!<br/>
+                  You have completed the ocean adventure.
+                </h2>
+                <div className="text-3xl text-cyan-200 font-semibold mb-6">🌊✨</div>
+              </div>
+
+              <div className="mb-10">
+                <div className="inline-flex items-center gap-4 px-8 py-5 rounded-2xl bg-gradient-to-r from-yellow-400/90 via-orange-400/90 to-yellow-500/90 text-white font-bold text-2xl shadow-2xl backdrop-blur-sm border border-yellow-300/50 ">
+                  <span className="text-4xl animate-spin">⭐</span>
+                  <span className="mx-2">{wordsCompleted} Lucky Stars Earned!</span>
+                  <span className="text-4xl animate-spin" style={{animationDirection: 'reverse'}}>⭐</span>
+                </div>
+              </div>
+
+              <div className="flex gap-6 justify-center">
+                <button
+                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-600 text-white font-bold text-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 "
+                  onClick={() => {
+                    resetGame();
+                    setTimeout(() => {
+                      if (shuffledWords.length > 0) {
+                        setupWord();
+                      }
+                    }, 100);
+                  }}
+                >
+                  Play Again
+                </button>
+                <button
+                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-slate-600 to-slate-700 text-white font-bold text-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                  onClick={onClose}
+                >
+                  Exit
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       <style>{`
         @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
         .animate-fade-in { animation: fade-in .25s ease-out; }
         @keyframes scale-in { from { opacity: 0; transform: translateY(8px) scale(.96) } to { opacity: 1; transform: translateY(0) scale(1) } }
         .animate-scale-in { animation: scale-in .25s ease-out; }
+
+        /* Mascot reactions */
+        @keyframes mascotZoom {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+          100% { transform: scale(1); }
+        }
+
+        /* Celebration animations */
+        @keyframes mascot-celebration {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          25% { transform: scale(1.1) rotate(-5deg); }
+          50% { transform: scale(1.2) rotate(0deg); }
+          75% { transform: scale(1.1) rotate(5deg); }
+        }
+        .animate-mascot-celebration { animation: mascot-celebration 2s ease-in-out infinite; }
+
+        @keyframes mascot-bounce {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); }
+          25% { transform: translate(-50%, -50%) scale(1.05) translateY(-10px); }
+          50% { transform: translate(-50%, -50%) scale(1.1) translateY(-20px); }
+          75% { transform: translate(-50%, -50%) scale(1.05) translateY(-10px); }
+        }
+        .animate-mascot-bounce { animation: mascot-bounce 2s ease-in-out infinite; }
+
+        @keyframes celebration-bubble {
+          0% { transform: translateY(0) scale(0.8); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
+        }
+        .animate-celebration-bubble { animation: celebration-bubble linear infinite; }
+
+        @keyframes celebration-sparkle {
+          0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+          50% { transform: scale(1) rotate(180deg); opacity: 1; }
+        }
+        .animate-celebration-sparkle { animation: celebration-sparkle ease-in-out infinite; }
+
+        @keyframes wave-glow {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        .animate-wave-glow { animation: wave-glow 3s ease-in-out infinite; }
+
+        /* Floating letter animations - gentle seaweed/bubble drift */
+        @keyframes oceanCurrentDrift {
+          0% {
+            transform: translateX(0px) translateY(0px) rotate(0deg);
+          }
+          25% {
+            transform: translateX(3px) translateY(-2px) rotate(0.5deg);
+          }
+          50% {
+            transform: translateX(-2px) translateY(-1px) rotate(-0.3deg);
+          }
+          75% {
+            transform: translateX(1px) translateY(3px) rotate(0.2deg);
+          }
+          100% {
+            transform: translateX(0px) translateY(0px) rotate(0deg);
+          }
+        }
+
+        /* Ocean glow effect for floating letters - subtle cyan pulsing */
+        @keyframes oceanGlow {
+          0%, 100% {
+            filter: drop-shadow(0 0 8px rgba(103, 232, 249, 0.3)) drop-shadow(0 0 16px rgba(103, 232, 249, 0.1));
+          }
+          50% {
+            filter: drop-shadow(0 0 12px rgba(103, 232, 249, 0.5)) drop-shadow(0 0 24px rgba(103, 232, 249, 0.2));
+          }
+        }
+        .animate-ocean-glow {
+          animation: oceanGlow 4s ease-in-out infinite;
+        }
+
+        /* Firework animation */
+        @keyframes firework {
+          0% {
+            transform: scale(0) rotate(0deg);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1) rotate(180deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(0) rotate(360deg);
+            opacity: 0;
+            display: none;
+          }
+        }
+
+        .animate-firework {
+          animation: firework 2s ease-out infinite;
+        }
       `}</style>
     </div>
   );
@@ -834,217 +1419,413 @@ function GameModal({
 
 // (Old simplified Game 1 removed)
 
-// Game 2: Dodge the Hunter (very light placeholder canvas)
+// Game 2: Dodge the Hunter - Complete rebuild
 function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: number) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef = useRef<number>();
-  const touchRef = useRef<{ active: boolean; x: number; y: number }>({ active: false, x: 0, y: 0 });
+  const [mode, setMode] = useState<'select' | 'playing' | 'gameOver' | 'win'>('select');
+  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
+  const [playerX, setPlayerX] = useState(0);
+  const [starsEarned, setStarsEarned] = useState(0);
 
+  // Game objects
+  const [obstacles, setObstacles] = useState<Array<{
+    id: number;
+    x: number;
+    y: number;
+    type: number; // 0-6 for different obstacle images
+    passed?: boolean;
+  }>>([]);
+
+  const [luckyStars, setLuckyStars] = useState<Array<{
+    id: number;
+    x: number;
+    y: number;
+  }>>([]);
+
+  // Game progression
+  const [speedFactor, setSpeedFactor] = useState(1.0);
+  const [obstaclesSpawned, setObstaclesSpawned] = useState(0);
+  const [starsSpawned, setStarsSpawned] = useState(0);
+  const [gameTime, setGameTime] = useState(0);
+
+  // Obstacle images (7 different types × 2 = 14 total)
+  const obstacleImages = [
+    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle1.png",
+    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle2.png",
+    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle3.png",
+    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle4.png",
+    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle5.png",
+    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle6.png",
+    "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle7.png"
+  ];
+
+  // Character selection
+  const selectCharacter = (character: string) => {
+    setSelectedCharacter(character);
+  };
+
+  // Start game
+  const startGame = () => {
+    if (!selectedCharacter) return;
+    setMode('playing');
+    setPlayerX(50); // Center of screen
+    setStarsEarned(0);
+    setObstacles([]);
+    setLuckyStars([]);
+    setSpeedFactor(1.0);
+    setObstaclesSpawned(0);
+    setStarsSpawned(0);
+    setGameTime(0);
+  };
+
+  // Reset to menu
+  const resetToMenu = () => {
+    setMode('select');
+    setSelectedCharacter(null);
+    setPlayerX(0);
+    setStarsEarned(0);
+    setObstacles([]);
+    setLuckyStars([]);
+    setSpeedFactor(1.0);
+    setObstaclesSpawned(0);
+    setStarsSpawned(0);
+    setGameTime(0);
+  };
+
+  // Keyboard input for player movement
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return; // canvas not mounted yet
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return; // context unavailable
-    const dpr = (typeof window !== "undefined" && window.devicePixelRatio) ? window.devicePixelRatio : 1;
-    let w = (canvas.width = Math.max(1, Math.floor(canvas.clientWidth * dpr)));
-    let h = (canvas.height = Math.max(1, Math.floor(canvas.clientHeight * dpr)));
-    const scale = dpr;
+    if (mode !== 'playing') return;
 
-    const player = { x: w * 0.12, y: h * 0.5, r: 42 * scale, vx: 0, vy: 0 };
-    const keys = new Set<string>();
-    const obstacles: { x: number; y: number; vx: number; passed?: boolean }[] = [];
-    const stars: { x: number; y: number; vx: number }[] = [];
-    let speedFactor = 1.6; // player forward + world speed multiplier
-    let spawnCount = 0;
-    let laneTop = true; // alternate spawn lanes (top/bottom bands)
-    let starTimer = 0;
-    let starSpawned = 0;
-    const maxStars = 3;
-    // time-based loop helpers and base speeds (px/s)
-    let last = performance.now();
-    let obsSpawnTimer = 0;
-    let nextObsIn = 0.9 + Math.random() * 0.6;
-    const playerAutoSpeed = 140 * scale;
-    const baseObsSpeed = 180 * scale;
-
-    const addObstacle = () => {
-      // alternate vertical bands to reduce overlap; 3x implied by drawing height below
-      const bandY = laneTop ? h * 0.28 : h * 0.68;
-      laneTop = !laneTop;
-      const jitter = (Math.random() * 0.12 - 0.06) * h;
-      const y = Math.max(30 * scale, Math.min(h - 30 * scale, bandY + jitter));
-      const vx = baseObsSpeed * (0.9 + Math.random() * 0.2) * (1 + spawnCount * 0.07);
-      spawnCount += 1;
-      obstacles.push({ x: w + 60 * scale, y, vx });
-    };
-    const addStar = () => {
-      const y = Math.max(30 * scale, Math.min(h - 30 * scale, Math.random() * h));
-      stars.push({ x: w + 80 * scale, y, vx: baseObsSpeed * 0.85 * (0.9 + Math.random() * 0.2) });
-    };
-    // initial obstacle to show action immediately
-    addObstacle();
-
-    const onResize = () => {
-      const ndpr = (typeof window !== "undefined" && window.devicePixelRatio) ? window.devicePixelRatio : 1;
-      w = canvas.width = Math.max(1, Math.floor(canvas.clientWidth * ndpr));
-      h = canvas.height = Math.max(1, Math.floor(canvas.clientHeight * ndpr));
-    };
-    window.addEventListener("resize", onResize);
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.type === "keydown") keys.add(e.key.toLowerCase());
-      else keys.delete(e.key.toLowerCase());
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("keyup", onKey);
-
-    const touchStart = (e: TouchEvent) => {
-      const t = e.touches[0];
-      touchRef.current = { active: true, x: t.clientX * scale, y: t.clientY * scale };
-    };
-    const touchMove = (e: TouchEvent) => {
-      const t = e.touches[0];
-      touchRef.current = { active: true, x: t.clientX * scale, y: t.clientY * scale };
-    };
-    const touchEnd = () => (touchRef.current.active = false);
-    canvas.addEventListener("touchstart", touchStart);
-    canvas.addEventListener("touchmove", touchMove);
-    canvas.addEventListener("touchend", touchEnd);
-
-    let tick = 0;
-    const loop = (ts: number) => {
-      const dt = Math.min(0.05, (ts - last) / 1000);
-      last = ts;
-      tick++;
-      ctx.clearRect(0, 0, w, h);
-      // bg
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, "#dbeafe");
-      grad.addColorStop(1, "#bbf7d0");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-
-      // auto-run forward every frame (LEFT -> RIGHT)
-      player.x += playerAutoSpeed * speedFactor * dt; // base forward motion
-      // keyboard adjust (WASD/Arrows) with dt
-      const adj = 200 * scale * dt;
-      if (keys.has("arrowup") || keys.has("w")) player.y -= adj;
-      if (keys.has("arrowdown") || keys.has("s")) player.y += adj;
-      if (keys.has("arrowleft") || keys.has("a")) player.x -= adj;
-      if (keys.has("arrowright") || keys.has("d")) player.x += adj;
-      if (touchRef.current.active) {
-        player.x += (touchRef.current.x - player.x) * 0.08;
-        player.y += (touchRef.current.y - player.y) * 0.08;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        setPlayerX(prev => Math.max(5, prev - 2)); // Smooth left movement
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        setPlayerX(prev => Math.min(95, prev + 2)); // Smooth right movement
+      } else if (e.key === 'Escape') {
+        resetToMenu();
       }
-      player.x = Math.max(player.r, Math.min(w - player.r, player.x));
-      player.y = Math.max(player.r, Math.min(h - player.r, player.y));
+    };
 
-      // spawn obstacles by timer
-      obsSpawnTimer += dt;
-      if (obsSpawnTimer >= nextObsIn) { addObstacle(); obsSpawnTimer = 0; nextObsIn = 0.9 + Math.random() * 0.6; }
-      // spawn up to 3 stars at random timing
-      starTimer += dt;
-      if (starSpawned < maxStars && starTimer >= 2 + Math.random() * 2) {
-        starTimer = 0;
-        starSpawned += 1;
-        addStar();
-      }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mode]);
 
-      // update obstacles (move RIGHT -> LEFT), draw larger with glow and semi-transparency
-      ctx.save();
-      ctx.lineWidth = 8 * scale; // thicker
-      ctx.strokeStyle = "rgba(14,165,233,0.6)"; // semi-transparent
-      ctx.shadowColor = "rgba(14,165,233,0.7)";
-      ctx.shadowBlur = 16 * scale;
-      obstacles.forEach((o) => {
-        o.x -= o.vx * speedFactor * dt;
-        ctx.beginPath();
-        // 3x taller hook line
-        ctx.moveTo(o.x, o.y - 54 * scale);
-        ctx.lineTo(o.x, o.y + 54 * scale);
-        ctx.stroke();
-        // mark passed for progressive difficulty
-        if (!(o as any).passed && (o.x < player.x - player.r)) {
-          (o as any).passed = true;
-          speedFactor = Math.min(4.0, speedFactor + 0.06);
-          const rect = canvas.getBoundingClientRect();
-          onEarnStars(1, rect.left + (player.x / w) * rect.width, rect.top + (player.y / h) * rect.height);
+  // Game loop
+  useEffect(() => {
+    if (mode !== 'playing') return;
+
+    const gameLoop = () => {
+      setGameTime(prev => prev + 1);
+
+      // Spawn obstacles and stars
+      if (gameTime % 120 === 0 && obstaclesSpawned < 14) { // Every 2 seconds at 60fps
+        if (Math.random() < 0.8) { // 80% chance for obstacle
+          const obstacleType = obstaclesSpawned % 7; // Cycle through 7 types
+          const newObstacle = {
+            id: Date.now() + Math.random(),
+            x: Math.random() * 80 + 10, // Random X position
+            y: -10, // Start above screen
+            type: obstacleType
+          };
+          setObstacles(prev => [...prev, newObstacle]);
+          setObstaclesSpawned(prev => prev + 1);
+          setSpeedFactor(prev => prev * 1.05); // Increase speed by 5%
+        } else if (starsSpawned < 3) { // 20% chance for star (if not maxed out)
+          const newStar = {
+            id: Date.now() + Math.random(),
+            x: Math.random() * 80 + 10,
+            y: -10
+          };
+          setLuckyStars(prev => [...prev, newStar]);
+          setStarsSpawned(prev => prev + 1);
         }
+      }
+
+      // Update obstacles
+      setObstacles(prev => prev.map(obstacle => {
+        const newY = obstacle.y + 2 * speedFactor; // Fall down
+        if (newY > 110 && !obstacle.passed) {
+          // Passed bottom without hitting player
+          setStarsEarned(prev => prev + 1);
+          onEarnStars(1);
+          return { ...obstacle, passed: true };
+        }
+        return { ...obstacle, y: newY };
+      }).filter(obstacle => obstacle.y < 120)); // Remove when far below screen
+
+      // Update lucky stars
+      setLuckyStars(prev => prev.map(star => ({
+        ...star,
+        y: star.y + 2 * speedFactor // Fall down
+      })).filter(star => star.y < 120)); // Remove when far below screen
+
+      // Check collisions
+      const playerRect = {
+        left: playerX - 4,
+        right: playerX + 4,
+        top: 80 - 6, // Bottom area
+        bottom: 80 + 6
+      };
+
+      // Check obstacle collisions
+      for (const obstacle of obstacles) {
+        const obstacleRect = {
+          left: obstacle.x - 3,
+          right: obstacle.x + 3,
+          top: obstacle.y - 4,
+          bottom: obstacle.y + 4
+        };
+
+        if (!(playerRect.right < obstacleRect.left ||
+              playerRect.left > obstacleRect.right ||
+              playerRect.bottom < obstacleRect.top ||
+              playerRect.top > obstacleRect.bottom)) {
+          // Collision with obstacle - Game Over
+          setMode('gameOver');
+          return;
+        }
+      }
+
+      // Check star collisions
+      setLuckyStars(prevStars => {
+        return prevStars.filter(star => {
+          const starRect = {
+            left: star.x - 2,
+            right: star.x + 2,
+            top: star.y - 2,
+            bottom: star.y + 2
+          };
+
+          const collision = !(playerRect.right < starRect.left ||
+                            playerRect.left > starRect.right ||
+                            playerRect.bottom < starRect.top ||
+                            playerRect.top > starRect.bottom);
+
+          if (collision) {
+            setStarsEarned(prev => prev + 2);
+            onEarnStars(2);
+            return false; // Remove collected star
+          }
+          return true; // Keep star
+        });
       });
-      ctx.restore();
 
-      // update stars (glow, 3x radius), award +2 on collect
-      for (let i = stars.length - 1; i >= 0; i--) {
-        const s = stars[i];
-        s.x -= s.vx * speedFactor * dt;
-        ctx.save();
-        ctx.fillStyle = "#fde047";
-        ctx.shadowColor = "rgba(250,204,21,0.95)";
-        ctx.shadowBlur = 18 * scale;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, 18 * scale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        const dx = s.x - player.x;
-        const dy = s.y - player.y;
-        if (dx * dx + dy * dy < (player.r + 18 * scale) ** 2) {
-          const rect = canvas.getBoundingClientRect();
-          onEarnStars(2, rect.left + (s.x / w) * rect.width, rect.top + (s.y / h) * rect.height);
-          stars.splice(i, 1);
-          speedFactor = Math.min(4.0, speedFactor + 0.05);
-        }
+      // Check win condition
+      if (obstaclesSpawned >= 14 && obstacles.length === 0) {
+        setMode('win');
+        return;
       }
 
-      // collisions (AABB approx around player circle)
-      for (let i = obstacles.length - 1; i >= 0; i--) {
-        const o = obstacles[i];
-        const px1 = player.x - player.r, py1 = player.y - player.r;
-        const px2 = player.x + player.r, py2 = player.y + player.r;
-        const ox1 = o.x - 10 * scale, oy1 = o.y - 54 * scale, ox2 = o.x + 10 * scale, oy2 = o.y + 54 * scale;
-        const overlap = px1 < ox2 && px2 > ox1 && py1 < oy2 && py2 > oy1;
-        if (overlap) {
-          if (rafRef.current) cancelAnimationFrame(rafRef.current);
-          return; // end mini-game (Game Over)
-        }
-      }
-
-      // draw player with soft glow and bobbing
-      ctx.save();
-      ctx.shadowColor = "rgba(125,211,252,0.9)";
-      ctx.shadowBlur = 24 * scale;
-      const bob = Math.sin(tick / 10) * 2 * scale;
-      ctx.beginPath();
-      ctx.fillStyle = "#0ea5e9";
-      ctx.arc(player.x, player.y + bob, player.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.beginPath();
-      ctx.arc(player.x + 8 * scale, player.y - 6 * scale + bob, 3.5 * scale, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // remove off-screen items
-      for (let i = obstacles.length - 1; i >= 0; i--) if (obstacles[i].x < -60 * scale) obstacles.splice(i, 1);
-      for (let i = stars.length - 1; i >= 0; i--) if (stars[i].x < -40 * scale) stars.splice(i, 1);
-
-      rafRef.current = requestAnimationFrame(loop);
+      requestAnimationFrame(gameLoop);
     };
-    rafRef.current = requestAnimationFrame(loop);
 
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("keyup", onKey);
-      canvas.removeEventListener("touchstart", touchStart);
-      canvas.removeEventListener("touchmove", touchMove);
-      canvas.removeEventListener("touchend", touchEnd);
-    };
-  }, [onEarnStars]);
+    const animationId = requestAnimationFrame(gameLoop);
+    return () => cancelAnimationFrame(animationId);
+  }, [mode, gameTime, obstacles, luckyStars, obstaclesSpawned, starsSpawned, playerX, speedFactor, onEarnStars]);
 
   return (
-    <div className="w-full h-[360px] md:h-[420px]">
-      <canvas ref={canvasRef} className="w-full h-full touch-none" />
+    <div className="fixed inset-0 z-[70] bg-black">
+      {/* Video Background */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game2.%20mp4?updatedAt=1759396573159"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+      />
+
+      {/* Game UI Overlay */}
+      <div className="absolute inset-0 bg-black/30" />
+
+      {/* Character Selection */}
+      {mode === 'select' && (
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+          <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
+            <h2 className="text-3xl font-bold mb-6 text-slate-800">🐟 Chọn Nhân Vật 🐟</h2>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={() => selectCharacter('fish1')}
+                className={`p-4 rounded-xl border-2 transition-all ${selectedCharacter === 'fish1' ? 'border-cyan-500 bg-cyan-50' : 'border-gray-300 bg-white'}`}
+              >
+                <div className="text-4xl mb-2">🐟</div>
+                <div className="text-sm font-medium">Cá Xanh</div>
+              </button>
+              <button
+                onClick={() => selectCharacter('fish2')}
+                className={`p-4 rounded-xl border-2 transition-all ${selectedCharacter === 'fish2' ? 'border-cyan-500 bg-cyan-50' : 'border-gray-300 bg-white'}`}
+              >
+                <div className="text-4xl mb-2">🐠</div>
+                <div className="text-sm font-medium">Cá Vàng</div>
+              </button>
+            </div>
+            <button
+              onClick={startGame}
+              disabled={!selectedCharacter}
+              className={`px-8 py-4 rounded-2xl font-bold text-xl shadow-lg transition-all ${
+                selectedCharacter
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:scale-105'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              🎮 Bắt Đầu Chơi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Game Playing */}
+      {mode === 'playing' && (
+        <>
+          {/* HUD */}
+          <div className="absolute top-4 left-4 z-[80] flex items-center gap-4 text-white">
+            <div className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-md border border-white/30">
+              Stars: <span className="font-bold text-yellow-300">{starsEarned}</span>
+            </div>
+            <div className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-md border border-white/30">
+              Progress: <span className="font-bold">{obstaclesSpawned}/14</span>
+            </div>
+          </div>
+
+          {/* Player */}
+          <div
+            className="absolute w-20 h-20 z-[75] animate-runner-glow animate-runner-swim"
+            style={{
+              left: `${playerX}%`,
+              bottom: '20px',
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <div className="w-full h-full rounded-full overflow-hidden border-4 border-cyan-300 shadow-2xl">
+              <div className="w-full h-full bg-gradient-to-br from-cyan-300 to-blue-400 flex items-center justify-center transform scale-300">
+                <div className="text-4xl">{selectedCharacter === 'fish1' ? '🐟' : '🐠'}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Obstacles */}
+          {obstacles.map(obstacle => (
+            <div
+              key={obstacle.id}
+              className="absolute w-12 h-12 z-[70] animate-enter"
+              style={{
+                left: `${obstacle.x}%`,
+                top: `${obstacle.y}%`,
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              <img
+                src={obstacleImages[obstacle.type]}
+                alt={`Obstacle ${obstacle.type + 1}`}
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ))}
+
+          {/* Lucky Stars */}
+          {luckyStars.map(star => (
+            <div
+              key={star.id}
+              className="absolute w-8 h-8 z-[70] animate-star-sparkle"
+              style={{
+                left: `${star.x}%`,
+                top: `${star.y}%`,
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              <div className="w-full h-full text-3xl animate-pulse">⭐</div>
+            </div>
+          ))}
+
+          {/* Exit Button */}
+          <button
+            onClick={resetToMenu}
+            className="absolute top-4 right-4 z-[80] px-4 py-2 rounded-xl bg-white/80 text-slate-900 font-semibold shadow hover:bg-white"
+          >
+            Exit
+          </button>
+        </>
+      )}
+
+      {/* Game Over Screen */}
+      {mode === 'gameOver' && (
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+          <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
+            <div className="text-6xl mb-4">💥</div>
+            <h2 className="text-3xl font-bold mb-4 text-red-600">Game Over!</h2>
+            <p className="text-slate-700 mb-4">Bạn đã va chạm với chướng ngại vật!</p>
+            <p className="text-lg text-slate-700 mb-6">Điểm số: <span className="font-bold text-yellow-600">{starsEarned} ⭐</span></p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={startGame}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:scale-105 transition-transform"
+              >
+                🎮 Chơi Lại
+              </button>
+              <button
+                onClick={resetToMenu}
+                className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
+              >
+                🏠 Thoát
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Win Screen */}
+      {mode === 'win' && (
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+          <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
+            <div className="text-6xl mb-4">🎉</div>
+            <h2 className="text-3xl font-bold mb-4 text-green-600">Chúc Mừng!</h2>
+            <p className="text-slate-700 mb-4">Bạn đã sống sót qua tất cả chướng ngại vật!</p>
+            <p className="text-lg text-slate-700 mb-6">Điểm số: <span className="font-bold text-yellow-600">{starsEarned} ⭐</span></p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={startGame}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:scale-105 transition-transform"
+              >
+                🎮 Chơi Lại
+              </button>
+              <button
+                onClick={resetToMenu}
+                className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
+              >
+                🏠 Thoát
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes runner-glow {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.6)); }
+          50% { filter: drop-shadow(0 0 16px rgba(6, 182, 212, 0.9)); }
+        }
+        .animate-runner-glow { animation: runner-glow 2s ease-in-out infinite; }
+
+        @keyframes runner-swim {
+          0%, 100% { transform: translateX(-50%) scale(3); }
+          50% { transform: translateX(-50%) scale(3.1); }
+        }
+        .animate-runner-swim { animation: runner-swim 1.5s ease-in-out infinite; }
+
+        @keyframes enter {
+          0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+          100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .animate-enter { animation: enter 0.3s ease-out; }
+
+        @keyframes star-sparkle {
+          0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+          25% { transform: translate(-50%, -50%) scale(1.2) rotate(90deg); }
+          50% { transform: translate(-50%, -50%) scale(1.4) rotate(180deg); }
+          75% { transform: translate(-50%, -50%) scale(1.2) rotate(270deg); }
+        }
+        .animate-star-sparkle { animation: star-sparkle 1.5s ease-in-out infinite; }
+      `}</style>
     </div>
   );
 }
@@ -1282,7 +2063,7 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
             <div className="relative z-10 w-[92%] max-w-md rounded-3xl border border-white/30 bg-white/85 p-6 text-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.5)] animate-g1-pop">
               {(() => { const c = G1_CREATURES.find((cc) => cc.key === infoKey)!; return (
                 <div className="grid gap-4">
-                  <img src={c.img} alt={c.name} className="w-40 h-40 object-contain justify-self-center drop-shadow" />
+                  <img src={c.img} alt={c.name} className="w-48 h-48 object-contain justify-self-center drop-shadow" />
                   <h4 className="text-xl font-bold text-center">{c.name}</h4>
                   <p className="text-slate-700 text-center">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
                   <button className="justify-self-center px-4 py-2 rounded-xl bg-slate-900 text-white" onClick={() => setInfoKey(null)}>Close</button>
