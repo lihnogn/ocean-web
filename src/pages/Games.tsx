@@ -457,93 +457,127 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
       {/* Background Video */}
       <video className="absolute inset-0 w-full h-full object-cover" src={BG_VIDEO} autoPlay muted loop playsInline preload="auto" />
 
-      {/* Character Selection (Shopping Style) */}
+      {/* Character Selection (Carousel Style) */}
       {mode === 'select' && (
         <div className="relative z-10 flex flex-col min-h-screen">
           {/* Background Video */}
           <video className="absolute inset-0 w-full h-full object-cover" src={BG_VIDEO} autoPlay muted loop playsInline preload="auto" />
           <div className="absolute inset-0 bg-black/50" />
 
-          {/* Header */}
-          <div className="relative z-20 p-6">
-            <h1 className="text-4xl md:text-5xl font-bold text-white text-center mb-8 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+          {/* Top UI - Stars & Exit */}
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/50 rounded-full px-4 py-2 backdrop-blur-md">
+            <span className="text-yellow-300 text-2xl">⭐</span>
+            <span className="text-white font-bold text-lg">{globalStars}</span>
+          </div>
+          <button
+            onClick={exitGame}
+            className="absolute top-4 right-4 z-20 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+          >
+            <span className="text-blue-600 text-xl font-bold">✕</span>
+          </button>
+
+          {/* Main Carousel */}
+          <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-8 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
               Choose Your Character
-            </h1>
-          </div>
+            </h2>
 
-          {/* Character Grid */}
-          <div className="relative z-20 flex-1 flex items-center justify-center px-6 pb-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl">
-              {SKINS.map((skin) => (
-                <div
-                  key={skin.id}
-                  className={`relative bg-white/10 backdrop-blur-lg rounded-2xl p-4 border transition-all duration-300 ${
-                    selectedSkin === skin.id
-                      ? 'border-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.6)] scale-105'
-                      : 'border-white/20 hover:border-white/40 hover:scale-105'
-                  } ${!unlockedSkins.has(skin.id) ? 'opacity-75' : ''}`}
-                >
-                  {/* Character Image */}
-                  <div className="relative mb-4">
-                    <img
-                      src={skin.img}
-                      alt={skin.name}
-                      className="w-full h-32 object-contain rounded-xl"
-                    />
-                    {!unlockedSkins.has(skin.id) && (
-                      <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center">
-                        <span className="text-white text-3xl">🔒</span>
-                      </div>
-                    )}
+            {/* Carousel Container */}
+            <div className="relative flex items-center justify-center gap-8 mb-12">
+              {/* Left Arrow */}
+              <button
+                onClick={() => setSelectedSkinIndex((i) => (i - 1 + SKINS.length) % SKINS.length)}
+                className="w-14 h-14 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all text-blue-600 text-3xl"
+              >
+                ‹
+              </button>
+
+              {/* Center Character Display */}
+              <div className="relative">
+                {/* Glow Effect */}
+                <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-xl animate-pulse scale-150"></div>
+
+                {/* Character Image */}
+                <img
+                  src={SKINS[selectedSkinIndex].img}
+                  alt={SKINS[selectedSkinIndex].name}
+                  className={`relative w-48 h-48 md:w-56 md:h-56 object-contain drop-shadow-[0_0_30px_rgba(0,255,255,0.6)] transition-all duration-500 ${
+                    selectedSkin === SKINS[selectedSkinIndex].id ? 'animate-pulse scale-105' : 'scale-100'
+                  }`}
+                />
+
+                {/* Lock Overlay for Locked Characters */}
+                {!unlockedSkins.has(SKINS[selectedSkinIndex].id) && (
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                    <span className="text-white text-4xl">🔒</span>
                   </div>
+                )}
+              </div>
 
-                  {/* Character Name */}
-                  <h3 className="text-xl font-bold text-white text-center mb-4">{skin.name}</h3>
-
-                  {/* Action Button */}
-                  {unlockedSkins.has(skin.id) ? (
-                    <button
-                      onClick={() => setSelectedSkin(skin.id)}
-                      className={`w-full py-3 px-4 rounded-xl font-semibold transition-all ${
-                        selectedSkin === skin.id
-                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
-                          : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-lg hover:scale-105'
-                      }`}
-                    >
-                      Select
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => unlockSkin(skin.id, skin.cost)}
-                      className="w-full py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-yellow-400 to-orange-400 text-black shadow-lg hover:shadow-yellow-400/50 hover:scale-105 transition-all"
-                    >
-                      Buy ({skin.cost}⭐)
-                    </button>
-                  )}
-                </div>
-              ))}
+              {/* Right Arrow */}
+              <button
+                onClick={() => setSelectedSkinIndex((i) => (i + 1) % SKINS.length)}
+                className="w-14 h-14 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all text-blue-600 text-3xl"
+              >
+                ›
+              </button>
             </div>
-          </div>
 
-          {/* Bottom Buttons */}
-          <div className="relative z-20 p-6 flex justify-center gap-6">
-            <button
-              onClick={startGame}
-              disabled={!selectedSkin}
-              className={`px-8 py-4 text-xl font-bold rounded-2xl transition-all ${
-                selectedSkin
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:shadow-green-500/50 hover:scale-105 animate-pulse'
-                  : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-              }`}
-            >
-              Play Game
-            </button>
-            <button
-              onClick={exitGame}
-              className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xl font-bold rounded-2xl shadow-lg hover:shadow-red-500/50 hover:scale-105 transition-all"
-            >
-              Exit
-            </button>
+            {/* Character Info */}
+            <div className="text-center mb-8 max-w-md">
+              <h3 className="text-3xl md:text-4xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-4">
+                {SKINS[selectedSkinIndex].name}
+              </h3>
+
+              {/* Cost Display */}
+              {SKINS[selectedSkinIndex].cost > 0 && (
+                <p className="text-yellow-300 text-xl mb-6">
+                  {SKINS[selectedSkinIndex].cost} ⭐
+                </p>
+              )}
+
+              {/* Action Button */}
+              {unlockedSkins.has(SKINS[selectedSkinIndex].id) ? (
+                <button
+                  onClick={() => setSelectedSkin(SKINS[selectedSkinIndex].id)}
+                  className={`px-8 py-4 rounded-full font-bold shadow-lg hover:scale-105 transition-all text-xl ${
+                    selectedSkin === SKINS[selectedSkinIndex].id
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white animate-pulse'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-cyan-500/50'
+                  }`}
+                >
+                  Select
+                </button>
+              ) : (
+                <button
+                  onClick={() => unlockSkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)}
+                  className="px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold rounded-full shadow-lg hover:shadow-yellow-400/50 hover:scale-105 transition-all text-xl"
+                >
+                  Buy ({SKINS[selectedSkinIndex].cost}⭐)
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Buttons */}
+            <div className="flex gap-6">
+              <button
+                onClick={startGame}
+                disabled={!selectedSkin}
+                className={`px-10 py-4 text-xl font-bold rounded-full shadow-xl transition-all ${
+                  selectedSkin
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-green-500/50 hover:scale-105 animate-pulse'
+                    : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                }`}
+              >
+                Play Game
+              </button>
+              <button
+                onClick={exitGame}
+                className="px-10 py-4 bg-red-500 text-white text-xl font-bold rounded-full shadow-lg hover:bg-red-600 hover:scale-105 transition-all"
+              >
+                Exit
+              </button>
+            </div>
           </div>
         </div>
       )}
