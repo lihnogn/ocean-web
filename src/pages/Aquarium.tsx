@@ -97,25 +97,11 @@ const Aquarium = () => {
           <div className="glass-effect rounded-3xl border border-white/20 p-8 md:p-12 min-h-[500px] relative overflow-hidden shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)]">
             {/* Decorative Elements */}
             <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-accent/20 blur-3xl animate-float" />
-            <div className="absolute bottom-10 right-10 w-40 h-40 rounded-full bg-primary/20 blur-3xl animate-float-slow" />
             
-            {/* Avatar Fish */}
-            <div className="relative flex items-center justify-center py-12">
-              <img
-                src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N%20(2).gif?updatedAt=1759359847482"
-                alt="Ocean Adventure Avatar"
-                className="w-48 h-48 md:w-64 md:h-64 animate-swim drop-shadow-[0_0_30px_rgba(102,221,255,1)]"
-              />
-            </div>
-
-            {/* Info Cards */}
-            <div className="grid md:grid-cols-3 gap-4 mt-8">
-              <img
-                src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N%20(2).gif?updatedAt=1759359847482"
-                alt="Ocean Adventure Content"
-                className="w-full h-48 md:h-32 object-cover rounded-xl border border-white/10"
-              />
-            </div>
+            
+            
+            
+            
           </div>
 
           {/* Quick Actions */}
