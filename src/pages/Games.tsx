@@ -186,7 +186,6 @@ const Games = () => {
 }
 
 
-export default Games;
 // ===== Full-screen Game 2: Runner / Dodge =====
 type G2Skin = { id: string; name: string; img: string; cost: number };
 const G2_BG = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BG2.mp4?updatedAt=1759345792705";
@@ -1419,36 +1418,12 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
 
 // (Old simplified Game 1 removed)
 
-// Game 2: Dodge the Hunter - Complete rebuild
-function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: number) => void }) {
-  const [mode, setMode] = useState<'select' | 'playing' | 'gameOver' | 'win'>('select');
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
-  const [playerX, setPlayerX] = useState(0);
-  const [starsEarned, setStarsEarned] = useState(0);
-
-  // Game objects
-  const [obstacles, setObstacles] = useState<Array<{
-    id: number;
-    x: number;
-    y: number;
-    type: number; // 0-6 for different obstacle images
-    passed?: boolean;
-  }>>([]);
-
-  const [luckyStars, setLuckyStars] = useState<Array<{
-    id: number;
-    x: number;
-    y: number;
-  }>>([]);
-
-  // Game progression
-  const [speedFactor, setSpeedFactor] = useState(1.0);
-  const [obstaclesSpawned, setObstaclesSpawned] = useState(0);
-  const [starsSpawned, setStarsSpawned] = useState(0);
-  const [gameTime, setGameTime] = useState(0);
-
-  // Obstacle images (7 different types × 2 = 14 total)
-  const obstacleImages = [
+// Game 2: Runner - Complete rebuild
+function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
+  // Game constants
+  const G2_BG = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BG2.mp4?updatedAt=1759345792705";
+  const G2_STAR = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/34.png?updatedAt=1759317102787";
+  const G2_OBS = [
     "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle1.png",
     "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle2.png",
     "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle3.png",
@@ -1458,176 +1433,326 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
     "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/obstacle7.png"
   ];
 
-  // Character selection
-  const selectCharacter = (character: string) => {
-    setSelectedCharacter(character);
+  // Game state
+  const [mode, setMode] = useState<"select" | "running" | "paused" | "gameover" | "win">("select");
+  const [selectedSkin, setSelectedSkin] = useState<string | null>(null);
+  const [starsEarned, setStarsEarned] = useState(0);
+
+  // Game objects arrays
+  const [obstacles, setObstacles] = useState<Array<any>>([]);
+  const [luckyStars, setLuckyStars] = useState<Array<any>>([]);
+
+  // Game progression
+  const [speedFactor, setSpeedFactor] = useState(1.0);
+  const [obstaclesSpawned, setObstaclesSpawned] = useState(0);
+  const [starsSpawned, setStarsSpawned] = useState(0);
+
+  // Game refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const keysRef = useRef<Set<string>>(new Set());
+  const rafRef = useRef<number | null>(null);
+
+  // Skin selection
+  const skins = [
+    { id: "fish1", name: "Cá Xanh", emoji: "🐟", unlocked: true },
+    { id: "fish2", name: "Cá Vàng", emoji: "🐠", unlocked: true }
+  ];
+
+  // Keyboard handlers
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (["arrowleft", "arrowright", "a", "d", "escape"].includes(key)) {
+        e.preventDefault();
+        keysRef.current.add(key);
+
+        if (key === "escape") {
+          if (mode === "running") {
+            setMode("paused");
+          } else if (mode === "paused") {
+            setMode("running");
+          }
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (["arrowleft", "arrowright", "a", "d"].includes(key)) {
+        keysRef.current.delete(key);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [mode]);
+
+  // Cleanup function
+  const cleanup = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    // Remove all game elements
+    if (containerRef.current) {
+      const container = containerRef.current;
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
+      }
+    }
+
+    setObstacles([]);
+    setLuckyStars([]);
+    setObstaclesSpawned(0);
+    setStarsSpawned(0);
+    setSpeedFactor(1.0);
+    setStarsEarned(0);
   };
 
   // Start game
   const startGame = () => {
-    if (!selectedCharacter) return;
-    setMode('playing');
-    setPlayerX(50); // Center of screen
+    if (!selectedSkin) return;
+
+    setMode("running");
     setStarsEarned(0);
     setObstacles([]);
     setLuckyStars([]);
     setSpeedFactor(1.0);
     setObstaclesSpawned(0);
     setStarsSpawned(0);
-    setGameTime(0);
   };
 
   // Reset to menu
   const resetToMenu = () => {
-    setMode('select');
-    setSelectedCharacter(null);
-    setPlayerX(0);
-    setStarsEarned(0);
-    setObstacles([]);
-    setLuckyStars([]);
-    setSpeedFactor(1.0);
-    setObstaclesSpawned(0);
-    setStarsSpawned(0);
-    setGameTime(0);
+    cleanup();
+    setMode("select");
+    setSelectedSkin(null);
   };
-
-  // Keyboard input for player movement
-  useEffect(() => {
-    if (mode !== 'playing') return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        setPlayerX(prev => Math.max(5, prev - 2)); // Smooth left movement
-      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        setPlayerX(prev => Math.min(95, prev + 2)); // Smooth right movement
-      } else if (e.key === 'Escape') {
-        resetToMenu();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode]);
 
   // Game loop
   useEffect(() => {
-    if (mode !== 'playing') return;
+    if (mode !== "running" || !containerRef.current) return;
 
-    const gameLoop = () => {
-      setGameTime(prev => prev + 1);
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
 
-      // Spawn obstacles and stars
-      if (gameTime % 120 === 0 && obstaclesSpawned < 14) { // Every 2 seconds at 60fps
-        if (Math.random() < 0.8) { // 80% chance for obstacle
-          const obstacleType = obstaclesSpawned % 7; // Cycle through 7 types
-          const newObstacle = {
-            id: Date.now() + Math.random(),
-            x: Math.random() * 80 + 10, // Random X position
-            y: -10, // Start above screen
-            type: obstacleType
-          };
-          setObstacles(prev => [...prev, newObstacle]);
-          setObstaclesSpawned(prev => prev + 1);
-          setSpeedFactor(prev => prev * 1.05); // Increase speed by 5%
-        } else if (starsSpawned < 3) { // 20% chance for star (if not maxed out)
-          const newStar = {
-            id: Date.now() + Math.random(),
-            x: Math.random() * 80 + 10,
-            y: -10
-          };
-          setLuckyStars(prev => [...prev, newStar]);
-          setStarsSpawned(prev => prev + 1);
-        }
+    // Create player element
+    const playerElement = document.createElement("div");
+    playerElement.className = "absolute animate-runner-glow animate-runner-swim will-change-transform pointer-events-none";
+    playerElement.style.width = "80px";
+    playerElement.style.height = "80px";
+    playerElement.style.backgroundColor = selectedSkin === "fish1" ? "#06b6d4" : "#eab308";
+    playerElement.style.borderRadius = "50%";
+    playerElement.style.display = "flex";
+    playerElement.style.alignItems = "center";
+    playerElement.style.justifyContent = "center";
+    playerElement.style.fontSize = "48px";
+
+    const emoji = selectedSkin === "fish1" ? "🐟" : "🐠";
+    playerElement.textContent = emoji;
+
+    container.appendChild(playerElement);
+
+    let playerX = rect.width * 0.5 - 40; // Center position
+    let playerY = rect.height - 100; // Bottom position
+    let playerVx = 0;
+    const playerSpeed = 300;
+
+    let gameTime = 0;
+    let nextSpawnTime = 2000; // 2 second delay
+    let lastTimestamp = performance.now();
+
+    const gameLoop = (timestamp: number) => {
+      const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+      lastTimestamp = timestamp;
+      gameTime += dt * 1000; // Convert to milliseconds
+
+      // Update player position
+      playerVx = 0;
+      if (keysRef.current.has("arrowleft") || keysRef.current.has("a")) {
+        playerVx = -playerSpeed;
+      } else if (keysRef.current.has("arrowright") || keysRef.current.has("d")) {
+        playerVx = playerSpeed;
       }
 
-      // Update obstacles
+      playerX += playerVx * dt;
+      playerX = Math.max(0, Math.min(rect.width - 80, playerX));
+
+      playerElement.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
+
+      // Spawn objects
+      if (gameTime >= nextSpawnTime && obstaclesSpawned < 14) {
+        const shouldSpawnStar = starsSpawned < 3 && Math.random() < 0.2;
+
+        if (shouldSpawnStar) {
+          // Spawn star
+          const starElement = document.createElement("img");
+          starElement.src = G2_STAR;
+          starElement.className = "absolute animate-star-sparkle will-change-transform pointer-events-none";
+          starElement.style.width = "32px";
+          starElement.style.height = "32px";
+
+          const starX = Math.random() * (rect.width - 100) + 50;
+          starElement.style.left = `${starX}px`;
+          starElement.style.top = "-32px";
+
+          container.appendChild(starElement);
+
+          setLuckyStars(prev => [...prev, {
+            element: starElement,
+            x: starX,
+            y: -32,
+            vy: rect.height * 0.25 * speedFactor
+          }]);
+
+          setStarsSpawned(prev => prev + 1);
+        } else {
+          // Spawn obstacle
+          const obstacleElement = document.createElement("img");
+          obstacleElement.src = G2_OBS[Math.floor(Math.random() * G2_OBS.length)];
+          obstacleElement.className = "absolute animate-enter will-change-transform pointer-events-none";
+          obstacleElement.style.width = "60px";
+          obstacleElement.style.height = "60px";
+
+          const obstacleX = Math.random() * (rect.width - 110) + 50;
+          obstacleElement.style.left = `${obstacleX}px`;
+          obstacleElement.style.top = "-60px";
+
+          container.appendChild(obstacleElement);
+
+          setObstacles(prev => [...prev, {
+            element: obstacleElement,
+            x: obstacleX,
+            y: -60,
+            vy: rect.height * 0.25 * speedFactor
+          }]);
+
+          setObstaclesSpawned(prev => prev + 1);
+          setSpeedFactor(prev => prev * 1.05); // Increase speed by 5%
+        }
+
+        nextSpawnTime = gameTime + 1500 + Math.random() * 500; // 1.5-2 seconds
+      }
+
+      // Update obstacles and stars
       setObstacles(prev => prev.map(obstacle => {
-        const newY = obstacle.y + 2 * speedFactor; // Fall down
-        if (newY > 110 && !obstacle.passed) {
-          // Passed bottom without hitting player
+        obstacle.y += obstacle.vy * dt;
+        obstacle.element.style.transform = `translateY(${obstacle.y}px)`;
+
+        // Check if passed bottom
+        if (obstacle.y > rect.height && !obstacle.passed) {
+          obstacle.passed = true;
           setStarsEarned(prev => prev + 1);
           onEarnStars(1);
-          return { ...obstacle, passed: true };
         }
-        return { ...obstacle, y: newY };
-      }).filter(obstacle => obstacle.y < 120)); // Remove when far below screen
 
-      // Update lucky stars
-      setLuckyStars(prev => prev.map(star => ({
-        ...star,
-        y: star.y + 2 * speedFactor // Fall down
-      })).filter(star => star.y < 120)); // Remove when far below screen
+        // Remove if off screen
+        if (obstacle.y > rect.height + 100) {
+          if (obstacle.element.parentNode) {
+            obstacle.element.remove();
+          }
+          return null;
+        }
+        return obstacle;
+      }).filter(Boolean));
 
-      // Check collisions
-      const playerRect = {
-        left: playerX - 4,
-        right: playerX + 4,
-        top: 80 - 6, // Bottom area
-        bottom: 80 + 6
-      };
+      setLuckyStars(prev => prev.map(star => {
+        star.y += star.vy * dt;
+        star.element.style.transform = `translateY(${star.y}px)`;
+
+        // Remove if off screen
+        if (star.y > rect.height + 100) {
+          if (star.element.parentNode) {
+            star.element.remove();
+          }
+          return null;
+        }
+        return star;
+      }).filter(Boolean));
+
+      // Collision detection
+      const playerRect = { left: playerX, right: playerX + 80, top: playerY, bottom: playerY + 80 };
 
       // Check obstacle collisions
       for (const obstacle of obstacles) {
+        if (!obstacle) continue;
         const obstacleRect = {
-          left: obstacle.x - 3,
-          right: obstacle.x + 3,
-          top: obstacle.y - 4,
-          bottom: obstacle.y + 4
+          left: obstacle.x,
+          right: obstacle.x + 60,
+          top: obstacle.y,
+          bottom: obstacle.y + 60
         };
 
         if (!(playerRect.right < obstacleRect.left ||
               playerRect.left > obstacleRect.right ||
               playerRect.bottom < obstacleRect.top ||
               playerRect.top > obstacleRect.bottom)) {
-          // Collision with obstacle - Game Over
-          setMode('gameOver');
+          // Collision - Game Over
+          cleanup();
+          setMode("gameover");
           return;
         }
       }
 
       // Check star collisions
-      setLuckyStars(prevStars => {
-        return prevStars.filter(star => {
-          const starRect = {
-            left: star.x - 2,
-            right: star.x + 2,
-            top: star.y - 2,
-            bottom: star.y + 2
-          };
+      setLuckyStars(prev => prev.map(star => {
+        if (!star) return null;
+        const starRect = {
+          left: star.x,
+          right: star.x + 32,
+          top: star.y,
+          bottom: star.y + 32
+        };
 
-          const collision = !(playerRect.right < starRect.left ||
-                            playerRect.left > starRect.right ||
-                            playerRect.bottom < starRect.top ||
-                            playerRect.top > starRect.bottom);
+        const collision = !(playerRect.right < starRect.left ||
+                          playerRect.left > starRect.right ||
+                          playerRect.bottom < starRect.top ||
+                          playerRect.top > starRect.bottom);
 
-          if (collision) {
-            setStarsEarned(prev => prev + 2);
-            onEarnStars(2);
-            return false; // Remove collected star
+        if (collision) {
+          setStarsEarned(prev => prev + 2);
+          onEarnStars(2);
+          if (star.element.parentNode) {
+            star.element.remove();
           }
-          return true; // Keep star
-        });
-      });
+          return null; // Remove collected star
+        }
+        return star;
+      }).filter(Boolean));
 
       // Check win condition
-      if (obstaclesSpawned >= 14 && obstacles.length === 0) {
-        setMode('win');
+      if (obstaclesSpawned >= 14 && obstacles.length === 0 && luckyStars.length === 0) {
+        cleanup();
+        setMode("win");
         return;
       }
 
-      requestAnimationFrame(gameLoop);
+      rafRef.current = requestAnimationFrame(gameLoop);
     };
 
-    const animationId = requestAnimationFrame(gameLoop);
-    return () => cancelAnimationFrame(animationId);
-  }, [mode, gameTime, obstacles, luckyStars, obstaclesSpawned, starsSpawned, playerX, speedFactor, onEarnStars]);
+    rafRef.current = requestAnimationFrame(gameLoop);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      cleanup();
+    };
+  }, [mode, selectedSkin, obstaclesSpawned, starsSpawned, speedFactor]);
 
   return (
     <div className="fixed inset-0 z-[70] bg-black">
       {/* Video Background */}
       <video
         className="absolute inset-0 w-full h-full object-cover"
-        src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game2.%20mp4?updatedAt=1759396573159"
+        src={G2_BG}
         autoPlay
         muted
         loop
@@ -1639,33 +1764,33 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
       <div className="absolute inset-0 bg-black/30" />
 
       {/* Character Selection */}
-      {mode === 'select' && (
+      {mode === "select" && (
         <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
           <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
             <h2 className="text-3xl font-bold mb-6 text-slate-800">🐟 Chọn Nhân Vật 🐟</h2>
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <button
-                onClick={() => selectCharacter('fish1')}
-                className={`p-4 rounded-xl border-2 transition-all ${selectedCharacter === 'fish1' ? 'border-cyan-500 bg-cyan-50' : 'border-gray-300 bg-white'}`}
-              >
-                <div className="text-4xl mb-2">🐟</div>
-                <div className="text-sm font-medium">Cá Xanh</div>
-              </button>
-              <button
-                onClick={() => selectCharacter('fish2')}
-                className={`p-4 rounded-xl border-2 transition-all ${selectedCharacter === 'fish2' ? 'border-cyan-500 bg-cyan-50' : 'border-gray-300 bg-white'}`}
-              >
-                <div className="text-4xl mb-2">🐠</div>
-                <div className="text-sm font-medium">Cá Vàng</div>
-              </button>
+              {skins.map(skin => (
+                <button
+                  key={skin.id}
+                  onClick={() => setSelectedSkin(skin.id)}
+                  className={`p-4 rounded-xl border-2 transition-all ${
+                    selectedSkin === skin.id
+                      ? "border-cyan-500 bg-cyan-50"
+                      : "border-gray-300 bg-white hover:border-cyan-300"
+                  }`}
+                >
+                  <div className="text-4xl mb-2">{skin.emoji}</div>
+                  <div className="text-sm font-medium">{skin.name}</div>
+                </button>
+              ))}
             </div>
             <button
               onClick={startGame}
-              disabled={!selectedCharacter}
+              disabled={!selectedSkin}
               className={`px-8 py-4 rounded-2xl font-bold text-xl shadow-lg transition-all ${
-                selectedCharacter
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:scale-105'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                selectedSkin
+                  ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:scale-105"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
             >
               🎮 Bắt Đầu Chơi
@@ -1674,9 +1799,15 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
         </div>
       )}
 
-      {/* Game Playing */}
-      {mode === 'playing' && (
+      {/* Game Container */}
+      {(mode === "running" || mode === "paused") && (
         <>
+          <div
+            ref={containerRef}
+            className="absolute inset-0 overflow-hidden"
+            style={{ position: "relative" }}
+          />
+
           {/* HUD */}
           <div className="absolute top-4 left-4 z-[80] flex items-center gap-4 text-white">
             <div className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-md border border-white/30">
@@ -1687,55 +1818,29 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
             </div>
           </div>
 
-          {/* Player */}
-          <div
-            className="absolute w-20 h-20 z-[75] animate-runner-glow animate-runner-swim"
-            style={{
-              left: `${playerX}%`,
-              bottom: '20px',
-              transform: 'translateX(-50%)'
-            }}
-          >
-            <div className="w-full h-full rounded-full overflow-hidden border-4 border-cyan-300 shadow-2xl">
-              <div className="w-full h-full bg-gradient-to-br from-cyan-300 to-blue-400 flex items-center justify-center transform scale-300">
-                <div className="text-4xl">{selectedCharacter === 'fish1' ? '🐟' : '🐠'}</div>
+          {/* Pause Overlay */}
+          {mode === "paused" && (
+            <div className="absolute inset-0 z-[85] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
+                <h2 className="text-2xl font-bold mb-4 text-slate-800">⏸️ Tạm Dừng</h2>
+                <p className="text-slate-700 mb-6">Nhấn Escape để tiếp tục</p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setMode("running")}
+                    className="px-6 py-3 bg-cyan-500 text-white font-bold rounded-xl hover:scale-105 transition-transform"
+                  >
+                    ▶️ Tiếp Tục
+                  </button>
+                  <button
+                    onClick={resetToMenu}
+                    className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
+                  >
+                    🏠 Thoát
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Obstacles */}
-          {obstacles.map(obstacle => (
-            <div
-              key={obstacle.id}
-              className="absolute w-12 h-12 z-[70] animate-enter"
-              style={{
-                left: `${obstacle.x}%`,
-                top: `${obstacle.y}%`,
-                transform: 'translate(-50%, -50%)'
-              }}
-            >
-              <img
-                src={obstacleImages[obstacle.type]}
-                alt={`Obstacle ${obstacle.type + 1}`}
-                className="w-full h-full object-contain"
-              />
-            </div>
-          ))}
-
-          {/* Lucky Stars */}
-          {luckyStars.map(star => (
-            <div
-              key={star.id}
-              className="absolute w-8 h-8 z-[70] animate-star-sparkle"
-              style={{
-                left: `${star.x}%`,
-                top: `${star.y}%`,
-                transform: 'translate(-50%, -50%)'
-              }}
-            >
-              <div className="w-full h-full text-3xl animate-pulse">⭐</div>
-            </div>
-          ))}
+          )}
 
           {/* Exit Button */}
           <button
@@ -1748,7 +1853,7 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
       )}
 
       {/* Game Over Screen */}
-      {mode === 'gameOver' && (
+      {mode === "gameover" && (
         <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
           <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
             <div className="text-6xl mb-4">💥</div>
@@ -1763,7 +1868,7 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
                 🎮 Chơi Lại
               </button>
               <button
-                onClick={resetToMenu}
+                onClick={onClose}
                 className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
               >
                 🏠 Thoát
@@ -1774,7 +1879,7 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
       )}
 
       {/* Win Screen */}
-      {mode === 'win' && (
+      {mode === "win" && (
         <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
           <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center shadow-2xl">
             <div className="text-6xl mb-4">🎉</div>
@@ -1789,7 +1894,7 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
                 🎮 Chơi Lại
               </button>
               <button
-                onClick={resetToMenu}
+                onClick={onClose}
                 className="px-6 py-3 bg-slate-600 text-white font-bold rounded-xl hover:scale-105 transition-transform"
               >
                 🏠 Thoát
@@ -1807,29 +1912,28 @@ function GameDodge({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
         .animate-runner-glow { animation: runner-glow 2s ease-in-out infinite; }
 
         @keyframes runner-swim {
-          0%, 100% { transform: translateX(-50%) scale(3); }
-          50% { transform: translateX(-50%) scale(3.1); }
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
         }
         .animate-runner-swim { animation: runner-swim 1.5s ease-in-out infinite; }
 
         @keyframes enter {
-          0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
-          100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          0% { transform: scale(0.8); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
         }
         .animate-enter { animation: enter 0.3s ease-out; }
 
         @keyframes star-sparkle {
-          0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
-          25% { transform: translate(-50%, -50%) scale(1.2) rotate(90deg); }
-          50% { transform: translate(-50%, -50%) scale(1.4) rotate(180deg); }
-          75% { transform: translate(-50%, -50%) scale(1.2) rotate(270deg); }
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          25% { transform: scale(1.2) rotate(90deg); }
+          50% { transform: scale(1.4) rotate(180deg); }
+          75% { transform: scale(1.2) rotate(270deg); }
         }
         .animate-star-sparkle { animation: star-sparkle 1.5s ease-in-out infinite; }
       `}</style>
     </div>
   );
 }
-
 // Game 3: Guess the Ocean Creature (simple)
 function GameGuess({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: number) => void }) {
   const pool = ["octopus", "crab", "dolphin", "turtle", "shark", "seahorse"];
@@ -2091,4 +2195,4 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
       `}</style>
     </div>
   );
-}
+}export default Games;
