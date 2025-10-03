@@ -221,7 +221,7 @@ type G2Pickup = { id: number; x: number; y: number; w: number; h: number; collec
 function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
   const { stars: globalStars, addStars: addStarsGlobal } = useStars();
   const [mode, setMode] = useState<'loading' | 'select' | 'playing' | 'paused' | 'gameover' | 'win'>('loading');
-  const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0);
+  const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0); // default to first free
   const [sessionStars, setSessionStars] = useState(0);
   const [unlockedSkins, setUnlockedSkins] = useState<Set<string>>(new Set(['crab', 'shrimp', 'oyster'])); // free ones
   const containerRef = useRef<HTMLDivElement>(null);
@@ -241,13 +241,15 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     { id: 'crab', name: 'CRAB', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/43.png?updatedAt=1759350573972', cost: 0 },
     { id: 'shrimp', name: 'SHRIMP', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/51.png?updatedAt=1759343441290', cost: 0 },
     { id: 'oyster', name: 'OYSTER', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', cost: 0 },
-    { id: 'urchin', name: 'URCHIN', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/44.png?updatedAt=1759350574040', cost: 2 },
-    { id: 'turtle', name: 'TURTLE SEA', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/50.png?updatedAt=1759343440752', cost: 2 },
-    { id: 'puffer', name: 'PUFFER FISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/46.png?updatedAt=1759343441009', cost: 3 },
-    { id: 'seahorse', name: 'SEAHORSE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/42.png?updatedAt=1759343441030', cost: 4 },
-    { id: 'zebrafish', name: 'ZEBRAFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/47.png?updatedAt=1759343440536', cost: 4 },
-    { id: 'butterflyfish', name: 'BUTTERFLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/49.png?updatedAt=1759343440550', cost: 4 },
-    { id: 'jellyfish', name: 'JELLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/45.png?updatedAt=1759350574039', cost: 7 },
+    { id: 'turtle', name: 'TURTLE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/50.png?updatedAt=1759343440752', cost: 2 },
+    { id: 'jellyfish', name: 'JELLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/45.png?updatedAt=1759350574039', cost: 2 },
+    { id: 'starfish', name: 'STARFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N.png?updatedAt=1759335334953', cost: 3 },
+    { id: 'squid', name: 'SQUID', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/36.png?updatedAt=1759317100931', cost: 3 },
+    { id: 'dolphin', name: 'DOLPHIN', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/25%20ma%CC%80u.png?updatedAt=1759340404978', cost: 4 },
+    { id: 'whale', name: 'WHALE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/32.png?updatedAt=1759317103542', cost: 4 },
+    { id: 'octopus', name: 'OCTOPUS', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', cost: 5 }, // Placeholder, use oyster img for now
+    { id: 'seahorse', name: 'SEAHORSE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/42.png?updatedAt=1759343441030', cost: 5 },
+    { id: 'ray', name: 'RAY', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/37.png?updatedAt=1759317103184', cost: 6 }, // Placeholder
   ];
 
   const OBSTACLES = [
@@ -537,87 +539,72 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
           {/* Main Content */}
           <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              Choose Your Character
+              Chọn nhân vật của bạn
             </h2>
 
-            {/* Carousel */}
-            <div className="relative flex items-center justify-center gap-8 mb-8">
-              <button
-                onClick={() => setSelectedSkinIndex((i) => (i - 1 + SKINS.length) % SKINS.length)}
-                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all"
-              >
-                <span className="text-blue-600 text-2xl">‹</span>
-              </button>
-
-              {/* Left Skin */}
-              <div className="opacity-50 blur-sm scale-75 transition-all duration-300">
-                <img
-                  src={SKINS[(selectedSkinIndex - 1 + SKINS.length) % SKINS.length].img}
-                  alt="Previous"
-                  className="w-24 h-24 md:w-32 md:h-32 object-contain"
-                />
-              </div>
-
-              {/* Center Skin */}
-              <div className="relative scale-100 transition-all duration-300">
-                <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-xl animate-pulse"></div>
-                <img
-                  src={SKINS[selectedSkinIndex].img}
-                  alt={SKINS[selectedSkinIndex].name}
-                  className="relative w-40 h-40 md:w-48 md:h-48 object-contain drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]"
-                />
-                <div className="text-center mt-4">
-                  <h3 className="text-2xl md:text-3xl font-bold text-white drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]">
-                    {SKINS[selectedSkinIndex].name}
-                  </h3>
-                  {SKINS[selectedSkinIndex].cost > 0 && (
-                    <p className="text-yellow-300 text-lg mt-2">
-                      {SKINS[selectedSkinIndex].cost} ⭐
-                    </p>
-                  )}
-                  <div className="mt-4">
-                    {unlockedSkins.has(SKINS[selectedSkinIndex].id) ? (
-                      <button
-                        onClick={startGame}
-                        className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 transition-all animate-pulse"
-                      >
-                        Select
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => buySkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)}
-                        className="px-8 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold rounded-full shadow-lg hover:shadow-yellow-400/50 hover:scale-105 transition-all"
-                      >
-                        Buy ({SKINS[selectedSkinIndex].cost}⭐)
-                      </button>
+            {/* Skin Grid */}
+            <div className="grid grid-cols-3 gap-4 mb-8 max-w-2xl">
+              {SKINS.map((skin, index) => {
+                const isUnlocked = unlockedSkins.has(skin.id);
+                const isSelected = selectedSkinIndex === index;
+                return (
+                  <div
+                    key={skin.id}
+                    className={`relative w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden cursor-pointer transition-all ${
+                      isUnlocked ? 'hover:scale-105' : 'cursor-not-allowed'
+                    } ${isSelected && isUnlocked ? 'ring-4 ring-cyan-400 ring-opacity-75' : ''}`}
+                    onClick={() => {
+                      if (isUnlocked) {
+                        setSelectedSkinIndex(index);
+                      } else {
+                        toast.error('Bạn cần mua để mở khóa nhân vật này.');
+                      }
+                    }}
+                  >
+                    <img
+                      src={skin.img}
+                      alt={skin.name}
+                      className={`w-full h-full object-contain ${isUnlocked ? 'animate-pulse' : 'opacity-60'}`}
+                    />
+                    {!isUnlocked && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-white text-2xl">🔒</span>
+                      </div>
+                    )}
+                    {isSelected && isUnlocked && (
+                      <div className="absolute inset-0 bg-cyan-400/20 rounded-2xl"></div>
                     )}
                   </div>
-                </div>
-              </div>
+                );
+              })}
+            </div>
 
-              {/* Right Skin */}
-              <div className="opacity-50 blur-sm scale-75 transition-all duration-300">
-                <img
-                  src={SKINS[(selectedSkinIndex + 1) % SKINS.length].img}
-                  alt="Next"
-                  className="w-24 h-24 md:w-32 md:h-32 object-contain"
-                />
-              </div>
-
-              <button
-                onClick={() => setSelectedSkinIndex((i) => (i + 1) % SKINS.length)}
-                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all"
-              >
-                <span className="text-blue-600 text-2xl">›</span>
-              </button>
+            {/* Selected Skin Info */}
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-white drop-shadow">
+                {SKINS[selectedSkinIndex].name}
+              </h3>
+              {SKINS[selectedSkinIndex].cost > 0 && (
+                <p className="text-yellow-300 text-lg">
+                  {SKINS[selectedSkinIndex].cost} ⭐
+                </p>
+              )}
+              {!unlockedSkins.has(SKINS[selectedSkinIndex].id) && (
+                <button
+                  onClick={() => buySkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)}
+                  className="mt-2 px-6 py-2 bg-yellow-500 text-black font-bold rounded-full shadow-lg hover:scale-105 transition-all"
+                >
+                  Buy ({SKINS[selectedSkinIndex].cost}⭐)
+                </button>
+              )}
             </div>
 
             {/* Play Button */}
             <button
               onClick={startGame}
-              disabled={!unlockedSkins.has(SKINS[selectedSkinIndex].id)}
+              disabled={!unlockedSkins.has(SKINS[selectedSkinIndex]?.id)}
               className={`px-12 py-4 text-xl font-bold rounded-full shadow-xl transition-all ${
-                unlockedSkins.has(SKINS[selectedSkinIndex].id)
+                unlockedSkins.has(SKINS[selectedSkinIndex]?.id)
                   ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:shadow-cyan-600/50 hover:scale-105 animate-pulse'
                   : 'bg-gray-500 text-gray-300 cursor-not-allowed'
               }`}
