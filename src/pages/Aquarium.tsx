@@ -97,7 +97,7 @@ const Aquarium = () => {
           <div className="glass-effect rounded-3xl border border-white/20 p-8 md:p-12 min-h-[500px] relative overflow-hidden shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)]">
             {/* Aquarium Background */}
             <img
-              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/aquarium.gif?updatedAt=1759514411310"
+              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/b%E1%BB%83?updatedAt=1759523056092"
               alt="Aquarium Background"
               className="absolute inset-0 w-full h-full object-cover rounded-3xl"
             />
