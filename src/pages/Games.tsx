@@ -664,11 +664,15 @@ function GameCard({
         {/* placeholder art */}
         <div className="relative flex-1 min-h-[140px] rounded-2xl bg-white/30 border border-white/30 shadow-inner overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.6),transparent_60%)]" />
-          <div className="absolute inset-0 grid place-items-center select-none text-6xl md:text-7xl opacity-80">
-            {gameKey === "game1" && "🦀"}
-            {gameKey === "game2" && "🐟"}
-            {gameKey === "game3" && "🐙"}
-          </div>
+          <video
+            className="w-full h-full object-cover rounded-xl"
+            src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg1?updatedAt=1759518353355"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+          />
         </div>
 
         <div className="mt-6">
