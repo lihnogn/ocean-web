@@ -42,7 +42,7 @@ export const OceanBackground = () => {
       <video
         ref={videoRef}
         className="absolute inset-0 w-full h-full object-cover"
-        src="https://ik.imagekit.io/1mbxrb4zp/BRIEF%20GIAO%20DIE%CC%A3%CC%82N%20(1).mp4?updatedAt=1759320565654"
+        src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/bg%20t%E1%BB%95ng?updatedAt=1759522141999"
         autoPlay
         muted
         loop
