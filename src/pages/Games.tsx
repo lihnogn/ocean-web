@@ -666,7 +666,7 @@ function GameCard({
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.6),transparent_60%)]" />
           <video
             className="w-full h-full object-cover rounded-xl"
-            src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg1?updatedAt=1759518353355"
+            src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg2?updatedAt=1759518353732"
             autoPlay
             muted
             loop
