@@ -219,438 +219,355 @@ type G2Pickup = { id: number; x: number; y: number; w: number; h: number; collec
 
 // Game 2: Runner - Complete rebuild
 function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
-  const { stars: globalStars, unlockedSkins, unlockSkin } = useStars();
-  const [mode, setMode] = useState<"select" | "running" | "paused" | "gameover" | "win">("select");
-  const [selIdx, setSelIdx] = useState<number>(() => {
-    // pick random free skin initially
-    const free = [0,1,2];
-    return free[Math.floor(Math.random() * free.length)];
-  });
-  const [runStars, setRunStars] = useState(0);
-  const [remaining, setRemaining] = useState(14);
+  const { stars: globalStars, addStars: addStarsGlobal } = useStars();
+  const [mode, setMode] = useState<'loading' | 'select' | 'playing' | 'paused' | 'gameover' | 'win'>('loading');
+  const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0);
+  const [sessionStars, setSessionStars] = useState(0);
+  const [unlockedSkins, setUnlockedSkins] = useState<Set<string>>(new Set(['crab', 'shrimp', 'oyster'])); // free ones
   const containerRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number>();
-  const lastTsRef = useRef<number>(0);
-  const spawnTimerRef = useRef<number>(0);
-  const nextSpawnIndexRef = useRef<number>(0);
-  const orderRef = useRef<number[]>([]);
-  const playerRef = useRef<{ x:number; y:number; w:number; h:number; speed:number }|null>(null);
-  const obstaclesRef = useRef<G2Obstacle[]>([]);
-  const pickupsRef = useRef<G2Pickup[]>([]);
-  const frameBump = useRef(0); // used to force rerender/debug counters
-  const [, setFrame] = useState(0);
-  const keysRef = useRef<Record<string,boolean>>({});
-  const touchDirRef = useRef<{up:boolean;down:boolean;left:boolean;right:boolean}>({up:false,down:false,left:false,right:false});
-  const creditedRef = useRef(false);
-  const [isMoving, setIsMoving] = useState(false);
-  const movingRef = useRef(false);
-  const jumpVelocityRef = useRef(0);
-  const isJumpingRef = useRef(false);
-  const speedFactorRef = useRef(1);
-  const playerSpeedBaseRef = useRef(0);
-  const spawnCountRef = useRef(0);
-  const laneToggleRef = useRef(true); // alternate lanes to reduce overlap
-  const starSpawnTimerRef = useRef(0);
-  const starSpawnedRef = useRef(0);
-  const nextStarInRef = useRef(0);
-  const modeRef = useRef(mode);
-  const passedCountRef = useRef(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const assetsRef = useRef<Record<string, HTMLImageElement | HTMLVideoElement>>({});
+  const playerRef = useRef<{ x: number; y: number; vx: number; img: HTMLImageElement } | null>(null);
+  const obstaclesRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement; type: string }>>([]);
+  const starsRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement }>>([]);
+  const spawnQueueRef = useRef<Array<'obstacle' | 'star'>>([]);
+  const lastSpawnTimeRef = useRef(0);
+  const spawnIntervalRef = useRef(900);
+  const globalSpeedRef = useRef(150);
+  const keysRef = useRef<Set<string>>(new Set());
 
-  const shuffle = (arr: number[]) => {
-    const a = [...arr];
-    for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
-    return a;
-  };
+  const SKINS = [
+    { id: 'crab', name: 'CRAB', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/43.png?updatedAt=1759350573972', cost: 0 },
+    { id: 'shrimp', name: 'SHRIMP', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/51.png?updatedAt=1759343441290', cost: 0 },
+    { id: 'oyster', name: 'OYSTER', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', cost: 0 },
+    { id: 'urchin', name: 'URCHIN', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/44.png?updatedAt=1759350574040', cost: 2 },
+    { id: 'turtle', name: 'TURTLE SEA', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/50.png?updatedAt=1759343440752', cost: 2 },
+    { id: 'puffer', name: 'PUFFER FISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/46.png?updatedAt=1759343441009', cost: 3 },
+    { id: 'seahorse', name: 'SEAHORSE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/42.png?updatedAt=1759343441030', cost: 4 },
+    { id: 'zebrafish', name: 'ZEBRAFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/47.png?updatedAt=1759343440536', cost: 4 },
+    { id: 'butterflyfish', name: 'BUTTERFLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/49.png?updatedAt=1759343440550', cost: 4 },
+    { id: 'jellyfish', name: 'JELLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/45.png?updatedAt=1759350574039', cost: 7 },
+  ];
 
-  // Helper: attempt to spawn next obstacle from the right with progressive speed and non-overlapping spawn area
-  const trySpawnObstacle = (rect: DOMRect) => {
-    if (nextSpawnIndexRef.current >= orderRef.current.length) return false;
-    // Prevent spawn if another obstacle is still in the spawn zone near the right edge
-    const spawnZoneX = rect.width * 0.82;
-    const zoneOccupied = obstaclesRef.current.some(o => o.x > spawnZoneX && Math.abs(o.y - (rect.height*0.5)) < rect.height); // any in zone
-    if (zoneOccupied) return false;
+  const OBSTACLES = [
+    'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/53.png?updatedAt=1759344290562',
+    'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/58.png?updatedAt=1759344290530',
+    'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/54.png?updatedAt=1759344290411',
+    'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/52.png?updatedAt=1759344290355',
+    'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/57.png?updatedAt=1759344290306',
+    'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/56.png?updatedAt=1759344290254',
+    'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/55.png?updatedAt=1759344290166',
+  ];
 
-    const type = orderRef.current[nextSpawnIndexRef.current++];
-    // Size: 3× larger than previous baseline, clamped
-    const base = rect.height * 0.12;
-    const size = Math.min(rect.height * 0.4, base * 3 * (0.95 + Math.random() * 0.1));
-    const laneTop = laneToggleRef.current; laneToggleRef.current = !laneToggleRef.current;
-    const bandTop = laneTop ? rect.height * 0.22 : rect.height * 0.58;
-    let y = bandTop + (Math.random() * rect.height * 0.12 - rect.height * 0.06);
-    const x = rect.width + size + Math.random() * 60;
-    // Progressive difficulty: speed increases slightly with each spawn
-    const baseSpeed = rect.width * 0.25; // px/s
-    const speed = Math.min(baseSpeed * 1.9, baseSpeed * (1 + spawnCountRef.current * 0.035));
-    spawnCountRef.current += 1;
-    // Ensure no overlap at spawn with neighbors in spawn zone by nudging Y up to a few tries
-    let tries = 0;
-    while (tries < 8 && obstaclesRef.current.some(o => (o.x > rect.width * 0.9) && (y < o.y + o.h) && (y + size > o.y))) {
-      // nudge to another vertical spot within the band to avoid overlap at spawn
-      y += size * 0.6 * (tries % 2 === 0 ? 1 : -1);
-      // clamp within screen bounds
-      y = Math.max(20, Math.min(rect.height - size - 20, y));
-      tries++;
-    }
-    obstaclesRef.current.push({ id: Date.now() + nextSpawnIndexRef.current, type, x, y, w: size, h: size, passed: false, vx: speed });
-    return true;
-  };
+  const STAR_IMG = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/34.png?updatedAt=1759317102787';
+  const BG_VIDEO = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game2.%20mp4?updatedAt=1759396573159';
 
-  // Helper: spawn a lucky star from the right at a random lane
-  const spawnLuckyStar = (rect: DOMRect) => {
-    if (starSpawnedRef.current >= 3) return;
-    const x = rect.width + 200 + Math.random() * 200;
-    const band = Math.random() < 0.5 ? rect.height * 0.3 : rect.height * 0.7;
-    const y = band + (Math.random() * rect.height * 0.12 - rect.height * 0.06);
-    const size = Math.max(56, rect.height * 0.07);
-    pickupsRef.current.push({ id: Date.now() + starSpawnedRef.current, x, y, w: size, h: size, collected: false });
-    starSpawnedRef.current += 1;
-    // schedule next star in 3-6s
-    starSpawnTimerRef.current = 0;
-    nextStarInRef.current = 3 + Math.random() * 3;
-  };
+  const preloadAssets = async () => {
+    const assets: Record<string, HTMLImageElement | HTMLVideoElement> = {};
+    const promises: Promise<void>[] = [];
 
-  const startRun = () => {
-    modeRef.current = "running";
-    setMode("running");
-    setRunStars(0);
-    creditedRef.current = false;
-    // init player and entities
-    const rect = containerRef.current!.getBoundingClientRect();
-    // Make the sprite roughly 3× bigger than the earlier baseline
-    const pw = Math.max(120, Math.min(240, rect.width * 0.12));
-    const ph = pw;
-    playerRef.current = { x: rect.width * 0.12, y: rect.height * 0.5, w: pw, h: ph, speed: Math.max(180, rect.width * 0.35) };
-    // auto-run setup
-    // Base speed factor starts at 2 (as requested)
-    speedFactorRef.current = 2;
-    playerSpeedBaseRef.current = Math.max(140, rect.width * 0.22);
-    setIsMoving(true);
-    movingRef.current = true;
-    obstaclesRef.current = [];
-    pickupsRef.current = [];
-    // spawn order: each of 7 twice
-    orderRef.current = shuffle([...Array(7).keys(), ...Array(7).keys()]);
-    nextSpawnIndexRef.current = 0;
-    spawnTimerRef.current = 0;
-    spawnCountRef.current = 0;
-    laneToggleRef.current = true;
-    // spawn first obstacle immediately so gameplay starts right away
-    trySpawnObstacle(rect);
-    // make first obstacle visible immediately by placing it slightly inside the right edge
-    if (obstaclesRef.current.length > 0) {
-      const first = obstaclesRef.current[0];
-      first.x = Math.min(first.x, rect.width - first.w * 0.8);
-    }
-    // reset lucky star timers
-    starSpawnedRef.current = 0;
-    starSpawnTimerRef.current = 0;
-    nextStarInRef.current = 2 + Math.random() * 2; // first star between 2-4s
-    passedCountRef.current = 0;
-    frameBump.current = 0;
-    setRemaining(orderRef.current.length);
-    lastTsRef.current = performance.now();
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(loop);
-  };
+    // Load video
+    const video = document.createElement('video');
+    video.src = BG_VIDEO;
+    video.preload = 'auto';
+    video.muted = true;
+    video.loop = true;
+    promises.push(new Promise((resolve) => {
+      video.onloadeddata = () => {
+        assets['bg'] = video;
+        resolve();
+      };
+      video.onerror = () => resolve(); // fallback
+    }));
 
-  const endRun = (win: boolean) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    modeRef.current = win ? "win" : "gameover";
-    setMode(win ? "win" : "gameover");
-    if (!creditedRef.current) {
-      creditedRef.current = true;
-      onEarnStars(runStars);
-    }
-  };
-
-  const loop = (ts: number) => {
-    const dt = Math.min(0.05, (ts - lastTsRef.current) / 1000);
-    lastTsRef.current = ts;
-    const el = containerRef.current;
-    const player = playerRef.current;
-    if (!el || !player) {
-      rafRef.current = requestAnimationFrame(loop);
-      return;
-    }
-    
-    // Skip updates if not running, but keep loop alive
-    if (mode !== 'running') {
-      rafRef.current = requestAnimationFrame(loop);
-      return;
-    }
-    
-    const rect = el.getBoundingClientRect();
-    const baseSpeed = rect.width * 0.25; // px/s (reference only)
-
-    // auto-run: move player to the right continuously
-    if (!isMoving) { setIsMoving(true); }
-    movingRef.current = true;
-    // keyboard adjustments (WASD/Arrows) while preserving forward motion
-    const k = keysRef.current;
-    let ax = 0, ay = 0;
-    if (k["arrowup"]||k["w"]) ay -= 1;
-    if (k["arrowdown"]||k["s"]) ay += 1;
-    if (k["arrowleft"]||k["a"]) ax -= 1;
-    if (k["arrowright"]||k["d"]) ax += 1;
-    const amag = Math.hypot(ax, ay) || 1;
-    const lateralSpeed = playerSpeedBaseRef.current * 0.6;
-    player.x += playerSpeedBaseRef.current * speedFactorRef.current * dt + (ax/amag) * lateralSpeed * dt;
-    
-    // Jump physics (gravity + velocity)
-    if (isJumpingRef.current) {
-      const gravity = 1800; // px/s²
-      jumpVelocityRef.current += gravity * dt;
-      player.y += jumpVelocityRef.current * dt;
-      // Land on ground
-      const groundY = rect.height * 0.5;
-      if (player.y >= groundY) {
-        player.y = groundY;
-        isJumpingRef.current = false;
-        jumpVelocityRef.current = 0;
-      }
-    } else {
-      player.y += (ay/amag) * lateralSpeed * dt;
-    }
-    
-    // bounds
-    player.x = Math.max(0, Math.min(rect.width - player.w, player.x));
-    player.y = Math.max(0, Math.min(rect.height - player.h, player.y));
-    
-    // Loop player back to start when reaching right edge
-    if (player.x >= rect.width - player.w) {
-      player.x = 0;
-    }
-
-    // spawn obstacles sequentially (non-overlapping at spawn), with progressive speed
-    spawnTimerRef.current += dt;
-    const targetInterval = 1.1 + Math.random() * 0.6; // 1.1 - 1.7s between spawns
-    if (nextSpawnIndexRef.current < orderRef.current.length && spawnTimerRef.current >= targetInterval) {
-      // Only spawn if spawn zone is clear
-      if (trySpawnObstacle(rect)) {
-        spawnTimerRef.current = 0;
-      }
-    }
-
-    // Lucky stars: spawn randomly up to 3 during run
-    starSpawnTimerRef.current += dt;
-    if (starSpawnedRef.current < 3 && starSpawnTimerRef.current >= nextStarInRef.current) {
-      spawnLuckyStar(rect);
-    }
-
-    // move obstacles and pickups
-    obstaclesRef.current.forEach(o => { o.x -= (o.vx * speedFactorRef.current) * dt; });
-    // pickups move a bit slower than average obstacle
-    const starSpeed = rect.width * 0.22;
-    pickupsRef.current.forEach(p => p.x -= starSpeed * speedFactorRef.current * dt);
-    // remove offscreen
-    obstaclesRef.current = obstaclesRef.current.filter(o => o.x + o.w > -20);
-    pickupsRef.current = pickupsRef.current.filter(p => p.x + p.w > -20 && !p.collected);
-
-    // scoring: passing obstacles
-    obstaclesRef.current.forEach(o => {
-      if (!o.passed && (o.x + o.w) < player.x) {
-        o.passed = true;
-        passedCountRef.current += 1;
-        setRunStars(rs => rs + 1);
-        // passing an obstacle increases speed slightly for progressive difficulty
-        speedFactorRef.current = Math.min(5, speedFactorRef.current + 0.4);
-      }
+    // Load skins
+    SKINS.forEach(skin => {
+      const img = new Image();
+      img.src = skin.img;
+      promises.push(new Promise((resolve) => {
+        img.onload = () => {
+          assets[skin.id] = img;
+          resolve();
+        };
+        img.onerror = () => resolve();
+      }));
     });
-    // remove obstacles that have passed the player
-    obstaclesRef.current = obstaclesRef.current.filter(o => !(o.passed && (o.x + o.w) < player.x));
-    const notSpawned = orderRef.current.length - nextSpawnIndexRef.current;
-    const activeIncoming = obstaclesRef.current.filter(o => !o.passed).length;
-    setRemaining(Math.max(0, notSpawned + activeIncoming));
 
-    // collisions
-    const px = player.x, py = player.y, pw = player.w, ph = player.h;
-    for (const o of obstaclesRef.current) {
-      if (px < o.x + o.w && px + pw > o.x && py < o.y + o.h && py + ph > o.y) {
-        endRun(false);
-        setFrame(f=>f+1);
-        return;
-      }
-    }
-    for (const s of pickupsRef.current) {
-      if (!s.collected && px < s.x + s.w && px + pw > s.x && py < s.y + s.h && py + ph > s.y) {
-        s.collected = true;
-        setRunStars(rs => rs + 2);
-        // collecting a lucky star increases speed (+0.5)
-        speedFactorRef.current = Math.min(5, speedFactorRef.current + 0.4);
-      }
-    }
+    // Load obstacles
+    OBSTACLES.forEach((url, i) => {
+      const img = new Image();
+      img.src = url;
+      promises.push(new Promise((resolve) => {
+        img.onload = () => {
+          assets[`obs${i}`] = img;
+          resolve();
+        };
+        img.onerror = () => resolve();
+      }));
+    });
 
-    // win check: all spawned and none left on screen
-    if (nextSpawnIndexRef.current >= orderRef.current.length && obstaclesRef.current.length === 0) {
-      endRun(true);
-      setFrame(f=>f+1);
-      return;
-    }
+    // Load star
+    const starImg = new Image();
+    starImg.src = STAR_IMG;
+    promises.push(new Promise((resolve) => {
+      starImg.onload = () => {
+        assets['star'] = starImg;
+        resolve();
+      };
+      starImg.onerror = () => resolve();
+    }));
 
-    // request next frame and force a visual tick every iteration
-    frameBump.current += 1;
-    setFrame(f=>f+1);
-    rafRef.current = requestAnimationFrame(loop);
+    await Promise.all(promises);
+    assetsRef.current = assets;
+    setMode('select');
   };
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      keysRef.current[k] = e.type === 'keydown';
-      if (k === 'escape') { setMode('paused'); }
-      // Jump on Space key
-      if (k === ' ' && e.type === 'keydown' && !isJumpingRef.current && mode === 'running') {
-        isJumpingRef.current = true;
-        jumpVelocityRef.current = -600; // initial upward velocity (px/s)
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('keyup', onKey);
-    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    preloadAssets();
   }, []);
 
-  const currentSkin = G2_SKINS[selIdx];
-  const isUnlocked = !!unlockedSkins[currentSkin.id] || currentSkin.cost === 0;
-  const debugPlayer = playerRef.current;
-  const debugSpeed = speedFactorRef.current;
-  const debugObstacleCount = obstaclesRef.current.length;
-  const debugPickupCount = pickupsRef.current.length;
-
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
-
-  const tryUnlock = () => {
-    if (isUnlocked) return;
-    const ok = unlockSkin(currentSkin.id, currentSkin.cost);
-    if (!ok) toast.error("Not enough stars to unlock this skin.");
-    else toast.success("Skin unlocked!");
+  const buySkin = (skinId: string, cost: number) => {
+    if (globalStars >= cost) {
+      addStarsGlobal(-cost);
+      setUnlockedSkins(prev => new Set([...prev, skinId]));
+      toast.success(`Unlocked ${SKINS.find(s => s.id === skinId)?.name}!`);
+    } else {
+      toast.error('Not enough stars!');
+    }
   };
 
-  const resetAndClose = () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); onEarnStars(0); onClose(); };
+  const startGame = () => {
+    if (!unlockedSkins.has(SKINS[selectedSkinIndex].id)) {
+      toast.error('Please select an unlocked skin!');
+      return;
+    }
+    const skin = SKINS[selectedSkinIndex];
+    const playerImg = assetsRef.current[skin.id] as HTMLImageElement;
+    if (!playerImg) {
+      toast.error('Skin asset not loaded!');
+      return;
+    }
+
+    setMode('playing');
+    setSessionStars(0);
+
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    playerRef.current = { x: rect.width / 2 - 40, y: rect.height - 100, vx: 0, img: playerImg };
+
+    // Create spawn queue: 14 obstacles + 3 stars, shuffled
+    const queue: ('obstacle' | 'star')[] = [];
+    for (let i = 0; i < 7; i++) queue.push('obstacle', 'obstacle');
+    for (let i = 0; i < 3; i++) queue.push('star');
+    // Shuffle
+    for (let i = queue.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [queue[i], queue[j]] = [queue[j], queue[i]];
+    }
+    spawnQueueRef.current = queue;
+
+    obstaclesRef.current = [];
+    starsRef.current = [];
+    lastSpawnTimeRef.current = performance.now();
+    spawnIntervalRef.current = 900;
+    globalSpeedRef.current = 150;
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(gameLoop);
+  };
+
+  const gameLoop = (timestamp: number) => {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext('2d')!;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    const player = playerRef.current!;
+    const dt = Math.min(0.05, (timestamp - (lastSpawnTimeRef.current || timestamp)) / 1000);
+    lastSpawnTimeRef.current = timestamp;
+
+    // Handle input
+    player.vx = 0;
+    if (keysRef.current.has('ArrowLeft') || keysRef.current.has('a')) player.vx = -300;
+    if (keysRef.current.has('ArrowRight') || keysRef.current.has('d')) player.vx = 300;
+    player.x += player.vx * dt;
+    player.x = Math.max(0, Math.min(rect.width - 80, player.x));
+
+    // Spawn
+    if (spawnQueueRef.current.length > 0 && timestamp - lastSpawnTimeRef.current > spawnIntervalRef.current) {
+      const type = spawnQueueRef.current.shift()!;
+      if (type === 'obstacle') {
+        const obsIndex = Math.floor(Math.random() * 7);
+        const img = assetsRef.current[`obs${obsIndex}`] as HTMLImageElement;
+        if (img) {
+          const x = Math.random() * (rect.width - 100) + 50;
+          obstaclesRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img, type: 'obs' });
+        }
+      } else {
+        const img = assetsRef.current['star'] as HTMLImageElement;
+        if (img) {
+          const x = Math.random() * (rect.width - 100) + 50;
+          starsRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img });
+        }
+      }
+      lastSpawnTimeRef.current = timestamp;
+      spawnIntervalRef.current = Math.max(350, spawnIntervalRef.current - 15);
+      globalSpeedRef.current *= 1.01;
+    }
+
+    // Update obstacles
+    obstaclesRef.current = obstaclesRef.current.filter(obs => {
+      obs.y += obs.vy * dt;
+      if (obs.y > rect.height + 100) {
+        setSessionStars(s => s + 1); // dodged
+        return false;
+      }
+      // Collision with player
+      if (player.x < obs.x + 60 && player.x + 80 > obs.x && player.y < obs.y + 60 && player.y + 80 > obs.y) {
+        setMode('gameover');
+        return false;
+      }
+      return true;
+    });
+
+    // Update stars
+    starsRef.current = starsRef.current.filter(star => {
+      star.y += star.vy * dt;
+      if (star.y > rect.height + 100) return false;
+      // Collision with player
+      if (player.x < star.x + 32 && player.x + 80 > star.x && player.y < star.y + 32 && player.y + 80 > star.y) {
+        setSessionStars(s => s + 2);
+        return false;
+      }
+      return true;
+    });
+
+    // Draw
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    // Background is video, handled by CSS
+
+    // Draw player
+    ctx.drawImage(player.img, player.x, player.y, 80, 80);
+
+    // Draw obstacles
+    obstaclesRef.current.forEach(obs => ctx.drawImage(obs.img, obs.x, obs.y, 60, 60));
+
+    // Draw stars
+    starsRef.current.forEach(star => ctx.drawImage(star.img, star.x, star.y, 32, 32));
+
+    // Check win
+    if (spawnQueueRef.current.length === 0 && obstaclesRef.current.length === 0 && starsRef.current.length === 0) {
+      setMode('win');
+      return;
+    }
+
+    rafRef.current = requestAnimationFrame(gameLoop);
+  };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+        if (e.type === 'keydown') keysRef.current.add(e.key);
+        else keysRef.current.delete(e.key);
+        if (e.key === 'Escape' && mode === 'playing') setMode('paused');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    window.addEventListener('keyup', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('keyup', handleKey);
+    };
+  }, [mode]);
+
+  const exitGame = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    onEarnStars(sessionStars);
+    onClose();
+  };
 
   return (
-    <div className="fixed inset-0 z-[90]">
-      <video className="absolute inset-0 w-full h-full object-cover" src={G2_BG} autoPlay muted loop playsInline preload="auto" />
-      <div className="absolute inset-0 bg-black/30" />
-      <div ref={containerRef} className="relative z-10 h-full w-full overflow-hidden">
+    <div id="game2-root" className="fixed inset-0 z-[70] bg-black">
+      {/* Background Video */}
+      <video className="absolute inset-0 w-full h-full object-cover" src={BG_VIDEO} autoPlay muted loop playsInline preload="auto" />
 
-        {/* HUD */}
-        <div className="absolute top-3 left-3 z-[110] flex items-center gap-2 text-white/95">
-          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">Run Stars: <b>{runStars}</b></div>
-          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">Your Stars: <b>{globalStars}</b></div>
-          <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">Left: <b>{remaining}</b></div>
+      {/* Loading */}
+      {mode === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <div className="text-white text-2xl">Loading...</div>
         </div>
-        <div className="absolute top-[72px] left-3 z-[110] text-xs text-white/80 font-mono space-y-1 bg-black/30 border border-white/20 rounded-lg px-3 py-2 backdrop-blur">
-          <div>mode: {mode}</div>
-          <div>frame: {frameBump.current}</div>
-          <div>speedFactor: {debugSpeed.toFixed(2)}</div>
-          {debugPlayer && (
-            <>
-              <div>player.x: {debugPlayer.x.toFixed(1)}</div>
-              <div>player.y: {debugPlayer.y.toFixed(1)}</div>
-            </>
-          )}
-          <div>obstacles: {debugObstacleCount}</div>
-          <div>stars: {debugPickupCount}</div>
-        </div>
-        <div className="absolute top-3 right-3 z-[120] flex items-center gap-2">
-          <button onClick={() => setMode(mode === 'paused' ? 'running' : 'paused')} className="px-3 py-1 rounded-xl bg-white/80 text-slate-900">{mode === 'paused' ? 'Resume' : 'Pause'}</button>
-          <button onClick={resetAndClose} className="px-3 py-1 rounded-xl bg-white/80 text-slate-900">Exit</button>
-        </div>
+      )}
 
-        {/* Player */}
-        {mode !== 'select' && playerRef.current && (
-          <div className="absolute will-change-transform" style={{ width: playerRef.current.w, height: playerRef.current.h, transform: `translate3d(${playerRef.current.x}px, ${playerRef.current.y}px, 0)` }}>
-            <img
-              src={currentSkin.img}
-              alt={currentSkin.name}
-              className={`w-full h-full object-contain drop-shadow-[0_0_16px_rgba(255,255,255,0.9)] animate-runner-glow ${isMoving ? 'animate-runner-swim' : 'animate-runner-breathe'}`}
-            />
-          </div>
-        )}
-
-        {/* Obstacles */}
-        {mode === 'running' && obstaclesRef.current.map(o => (
-          <img key={o.id} src={G2_OBS[o.type]} className="absolute animate-enter opacity-70 blur-[1px] will-change-transform" style={{ width: o.w, height: o.h, transform: `translate3d(${o.x}px, ${o.y}px, 0)` }} />
-        ))}
-
-        {/* Lucky stars */}
-        {mode === 'running' && pickupsRef.current.map(s => (
-          <img key={s.id} src={G2_STAR} className="absolute animate-star animate-star-glow animate-star-sparkle will-change-transform" style={{ width: s.w, height: s.h, transform: `translate3d(${s.x}px, ${s.y}px, 0)` }} />
-        ))}
-
-        {/* Touch controls removed: auto-run mode */}
-
-        {/* Skin selector */}
-        {mode === 'select' && (
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="relative w-[92%] max-w-3xl rounded-3xl border border-white/30 bg-white/80 p-6 text-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.5)] animate-g1-pop">
-              <h3 className="text-2xl font-bold mb-2 text-center">Choose your character and let's begin.</h3>
-              <div className="flex items-center justify-between gap-3">
-                <button className="px-3 py-2 rounded-xl bg-white/90" onClick={() => setSelIdx((i) => (i - 1 + G2_SKINS.length) % G2_SKINS.length)}>◀</button>
-                <div className="flex flex-col items-center">
-                  <div className="w-56 h-56 rounded-2xl bg-white/40 border border-white/30 grid place-items-center overflow-hidden">
-                    <img
-                      src={currentSkin.img}
-                      alt={currentSkin.name}
-                      className={`${currentSkin.id === 'oyster' ? 'max-w-[80%] max-h-[80%]' : 'max-w-[100%] max-h-[100%]'} ${(currentSkin.id === 'crab' || currentSkin.id === 'jellyfish') ? 'scale-130' : (['oyster','turtle'].includes(currentSkin.id) ? '' : 'scale-130')} object-contain drop-shadow`}
-                    />
-                  </div>
-                  <div className="mt-2 font-semibold uppercase">{currentSkin.name}</div>
-                  {!isUnlocked && (
-                    <div className="mt-1 text-sm">Cost: <b>{currentSkin.cost}</b> ⭐</div>
-                  )}
-                </div>
-                <button className="px-3 py-2 rounded-xl bg-white/90" onClick={() => setSelIdx((i) => (i + 1) % G2_SKINS.length)}>▶</button>
-              </div>
-              {!isUnlocked ? (
-                <div className="mt-4 flex justify-center gap-3">
-                  <button className="px-4 py-2 rounded-xl bg-yellow-300 text-slate-900 font-semibold" onClick={tryUnlock}>Unlock</button>
-                  <button className="px-4 py-2 rounded-xl bg-slate-900 text-white" onClick={() => toast("Need to unlock before playing.")}>Play</button>
-                </div>
-              ) : (
-                <div className="mt-4 flex justify-center">
-                  <button className="px-6 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold" onClick={startRun}>Play</button>
-                </div>
+      {/* Skin Selection */}
+      {mode === 'select' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
+          <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 bg-white/80 text-black rounded">Exit</button>
+          <div className="text-white text-2xl mb-4">Choose Your Character</div>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSelectedSkinIndex((i) => (i - 1 + SKINS.length) % SKINS.length)}>◀</button>
+            <div className="text-center">
+              <img src={SKINS[selectedSkinIndex].img} alt={SKINS[selectedSkinIndex].name} className="w-32 h-32 mx-auto mb-2" />
+              <div className="text-white">{SKINS[selectedSkinIndex].name}</div>
+              {SKINS[selectedSkinIndex].cost > 0 && (
+                <div className="text-yellow-300">{SKINS[selectedSkinIndex].cost} ⭐</div>
               )}
             </div>
+            <button onClick={() => setSelectedSkinIndex((i) => (i + 1) % SKINS.length)}>▶</button>
           </div>
-        )}
+          <div className="mt-4 flex gap-4">
+            {unlockedSkins.has(SKINS[selectedSkinIndex].id) ? (
+              <button onClick={startGame} className="px-6 py-2 bg-green-500 text-white rounded">Play</button>
+            ) : (
+              <button onClick={() => buySkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)} className="px-6 py-2 bg-yellow-500 text-black rounded">Buy ({SKINS[selectedSkinIndex].cost}⭐)</button>
+            )}
+          </div>
+        </div>
+      )}
 
-        {/* Game over / Win */}
-        {(mode === 'gameover' || mode === 'win') && (
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-g1-fade" />
-            <div className="relative z-10 w-[92%] max-w-md rounded-3xl border border-white/30 bg-white/85 p-6 text-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.5)] animate-g1-pop">
-              <h3 className="text-2xl font-bold mb-2 text-center">{mode === 'win' ? 'Congratulations!' : 'Game Over'}</h3>
-              <p className="mb-4 text-center">You earned <b>+{runStars}</b> stars this run.</p>
-              <div className="flex gap-3 justify-center">
-                <button className="px-4 py-2 rounded-xl bg-white/90 hover:bg-white font-medium" onClick={onClose}>Return</button>
-                <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold" onClick={() => { creditedRef.current || onEarnStars(runStars); creditedRef.current = true; setMode('select'); }}>Play Again</button>
-              </div>
+      {/* Game Canvas */}
+      {(mode === 'playing' || mode === 'paused') && (
+        <>
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          <div className="absolute top-4 left-4 text-white">Stars: {sessionStars}</div>
+          <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 bg-white/80 text-black rounded">Exit</button>
+          {mode === 'paused' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <div className="text-white text-2xl">Paused</div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Game Over */}
+      {mode === 'gameover' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <div className="bg-white p-8 rounded text-center">
+            <div className="text-2xl mb-4">Game Over</div>
+            <div>You earned {sessionStars} stars</div>
+            <div className="mt-4 flex gap-4">
+              <button onClick={() => setMode('select')} className="px-4 py-2 bg-blue-500 text-white rounded">Play Again</button>
+              <button onClick={exitGame} className="px-4 py-2 bg-red-500 text-white rounded">Exit</button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
-
-      <style>{`
-        @keyframes runner-glow { 0%,100% { filter: drop-shadow(0 0 10px rgba(255,255,255,0.6)) } 50% { filter: drop-shadow(0 0 18px rgba(125,211,252,1)) } }
-        .animate-runner-glow { animation: runner-glow 2s ease-in-out infinite }
-        @keyframes enter { from { opacity: 0; transform: translateX(20px) } to { opacity: 1; transform: translateX(0) } }
-        .animate-enter { animation: enter .35s ease-out }
-        @keyframes starPulse { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.12); opacity: 1 } }
-        .animate-star { animation: starPulse 1.2s ease-in-out infinite }
-        @keyframes starGlow { 0%,100% { filter: drop-shadow(0 0 8px rgba(250,204,21,0.6)) } 50% { filter: drop-shadow(0 0 16px rgba(250,204,21,1)) } }
-        .animate-star-glow { animation: starGlow 1.2s ease-in-out infinite }
-        @keyframes starSparkle { 0%,100% { transform: scale(1) rotate(0deg); opacity: 0.85 } 25% { transform: scale(1.15) rotate(5deg); opacity: 1 } 50% { transform: scale(0.95) rotate(-5deg); opacity: 0.9 } 75% { transform: scale(1.1) rotate(3deg); opacity: 1 } }
-        .animate-star-sparkle { animation: starSparkle 1.5s ease-in-out infinite }
-        @keyframes runner-breathe { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
-        .animate-runner-breathe { animation: runner-breathe 2.2s ease-in-out infinite }
-        @keyframes runner-swim { 0% { transform: translateY(0) rotate(-2deg) } 50% { transform: translateY(-2px) rotate(2deg) } 100% { transform: translateY(0) rotate(-2deg) } }
-        .animate-runner-swim { animation: runner-swim .6s ease-in-out infinite }
-      `}</style>
+      {/* Win */}
+      {mode === 'win' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <div className="bg-white p-8 rounded text-center">
+            <div className="text-2xl mb-4">Congratulations!</div>
+            <div>You earned {sessionStars} stars</div>
+            <div className="mt-4 flex gap-4">
+              <button onClick={() => setMode('select')} className="px-4 py-2 bg-blue-500 text-white rounded">Play Again</button>
+              <button onClick={exitGame} className="px-4 py-2 bg-red-500 text-white rounded">Exit</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }// UI: Game card
