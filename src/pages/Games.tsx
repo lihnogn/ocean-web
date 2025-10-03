@@ -238,18 +238,16 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
   const keysRef = useRef<Set<string>>(new Set());
 
   const SKINS = [
-    { id: 'crab', name: 'CRAB', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/43.png?updatedAt=1759350573972', cost: 0 },
-    { id: 'shrimp', name: 'SHRIMP', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/51.png?updatedAt=1759343441290', cost: 0 },
-    { id: 'oyster', name: 'OYSTER', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', cost: 0 },
-    { id: 'turtle', name: 'TURTLE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/50.png?updatedAt=1759343440752', cost: 2 },
-    { id: 'jellyfish', name: 'JELLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/45.png?updatedAt=1759350574039', cost: 2 },
-    { id: 'starfish', name: 'STARFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N.png?updatedAt=1759335334953', cost: 3 },
-    { id: 'squid', name: 'SQUID', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/36.png?updatedAt=1759317100931', cost: 3 },
-    { id: 'dolphin', name: 'DOLPHIN', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/25%20ma%CC%80u.png?updatedAt=1759340404978', cost: 4 },
-    { id: 'whale', name: 'WHALE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/32.png?updatedAt=1759317103542', cost: 4 },
-    { id: 'octopus', name: 'OCTOPUS', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', cost: 5 }, // Placeholder, use oyster img for now
-    { id: 'seahorse', name: 'SEAHORSE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/42.png?updatedAt=1759343441030', cost: 5 },
-    { id: 'ray', name: 'RAY', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/37.png?updatedAt=1759317103184', cost: 6 }, // Placeholder
+    { id: 'crab', name: 'Crab', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/43.png?updatedAt=1759350573972', cost: 0 },
+    { id: 'shrimp', name: 'Shrimp', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/51.png?updatedAt=1759343441290', cost: 0 },
+    { id: 'oyster', name: 'Oyster', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', cost: 0 },
+    { id: 'urchin', name: 'Urchin', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/44.png?updatedAt=1759350574040', cost: 2 },
+    { id: 'turtle', name: 'Turtle Sea', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/50.png?updatedAt=1759343440752', cost: 2 },
+    { id: 'puffer', name: 'Puffer Fish', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/46.png?updatedAt=1759343441009', cost: 3 },
+    { id: 'seahorse', name: 'Seahorse', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/42.png?updatedAt=1759343441030', cost: 4 },
+    { id: 'zebrafish', name: 'Zebrafish', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/47.png?updatedAt=1759343440536', cost: 4 },
+    { id: 'butterflyfish', name: 'Butterflyfish', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/49.png?updatedAt=1759343440550', cost: 4 },
+    { id: 'jellyfish', name: 'Jellyfish', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/45.png?updatedAt=1759350574039', cost: 7 },
   ];
 
   const OBSTACLES = [
@@ -263,7 +261,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
   ];
 
   const STAR_IMG = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/34.png?updatedAt=1759317102787';
-  const BG_VIDEO = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game2.%20mp4?updatedAt=1759396573159';
+  const BG_VIDEO = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BG2.mp4?updatedAt=1759345792705';
 
   const preloadAssets = async () => {
     const assets: Record<string, HTMLImageElement | HTMLVideoElement> = {};
@@ -505,27 +503,13 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
       {/* Skin Selection */}
       {mode === 'select' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-900/40 via-cyan-900/40 to-teal-900/40">
-          {/* Floating Bubbles */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {Array.from({ length: 15 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full bg-white/20 animate-bubble"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  bottom: `-50px`,
-                  width: `${20 + Math.random() * 40}px`,
-                  height: `${20 + Math.random() * 40}px`,
-                  animationDelay: `${Math.random() * 5}s`,
-                  animationDuration: `${8 + Math.random() * 7}s`,
-                }}
-              />
-            ))}
-          </div>
+        <div className="absolute inset-0">
+          {/* Background Video */}
+          <video className="absolute inset-0 w-full h-full object-cover" src={BG_VIDEO} autoPlay muted loop playsInline preload="auto" />
+          <div className="absolute inset-0 bg-black/40" />
 
           {/* Top UI */}
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/30 rounded-full px-4 py-2 backdrop-blur-md">
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/50 rounded-full px-4 py-2 backdrop-blur-md">
             <span className="text-yellow-300 text-2xl">⭐</span>
             <span className="text-white font-bold text-lg">{globalStars}</span>
           </div>
@@ -536,92 +520,87 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
             <span className="text-blue-600 text-xl font-bold">✕</span>
           </button>
 
-          {/* Main Content */}
+          {/* Main Carousel */}
           <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              Chọn nhân vật của bạn
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-8 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+              Choose Your Character
             </h2>
 
-            {/* Skin Grid */}
-            <div className="grid grid-cols-3 gap-4 mb-8 max-w-2xl">
-              {SKINS.map((skin, index) => {
-                const isUnlocked = unlockedSkins.has(skin.id);
-                const isSelected = selectedSkinIndex === index;
-                return (
-                  <div
-                    key={skin.id}
-                    className={`relative w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden cursor-pointer transition-all ${
-                      isUnlocked ? 'hover:scale-105' : 'cursor-not-allowed'
-                    } ${isSelected && isUnlocked ? 'ring-4 ring-cyan-400 ring-opacity-75' : ''}`}
-                    onClick={() => {
-                      if (isUnlocked) {
-                        setSelectedSkinIndex(index);
-                      } else {
-                        toast.error('Bạn cần mua để mở khóa nhân vật này.');
-                      }
-                    }}
-                  >
-                    <img
-                      src={skin.img}
-                      alt={skin.name}
-                      className={`w-full h-full object-contain ${isUnlocked ? 'animate-pulse' : 'opacity-60'}`}
-                    />
-                    {!isUnlocked && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white text-2xl">🔒</span>
-                      </div>
-                    )}
-                    {isSelected && isUnlocked && (
-                      <div className="absolute inset-0 bg-cyan-400/20 rounded-2xl"></div>
-                    )}
-                  </div>
-                );
-              })}
+            {/* Carousel */}
+            <div className="relative flex items-center justify-center gap-8 mb-12">
+              <button
+                onClick={() => setSelectedSkinIndex((i) => (i - 1 + SKINS.length) % SKINS.length)}
+                className="w-14 h-14 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all text-blue-600 text-3xl"
+              >
+                ‹
+              </button>
+
+              {/* Center Character */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-xl animate-pulse scale-150"></div>
+                <img
+                  src={SKINS[selectedSkinIndex].img}
+                  alt={SKINS[selectedSkinIndex].name}
+                  className="relative w-48 h-48 md:w-56 md:h-56 object-contain drop-shadow-[0_0_30px_rgba(0,255,255,0.6)] animate-pulse"
+                />
+              </div>
+
+              <button
+                onClick={() => setSelectedSkinIndex((i) => (i + 1) % SKINS.length)}
+                className="w-14 h-14 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all text-blue-600 text-3xl"
+              >
+                ›
+              </button>
             </div>
 
-            {/* Selected Skin Info */}
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-white drop-shadow">
+            {/* Character Info */}
+            <div className="text-center mb-8 max-w-md">
+              <h3 className="text-3xl md:text-4xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-4">
                 {SKINS[selectedSkinIndex].name}
               </h3>
               {SKINS[selectedSkinIndex].cost > 0 && (
-                <p className="text-yellow-300 text-lg">
+                <p className="text-yellow-300 text-xl mb-6">
                   {SKINS[selectedSkinIndex].cost} ⭐
                 </p>
               )}
-              {!unlockedSkins.has(SKINS[selectedSkinIndex].id) && (
+              {unlockedSkins.has(SKINS[selectedSkinIndex].id) ? (
+                <button
+                  onClick={() => setSelectedSkinIndex(selectedSkinIndex)} // Just to confirm selection
+                  className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 transition-all text-xl"
+                >
+                  Select
+                </button>
+              ) : (
                 <button
                   onClick={() => buySkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)}
-                  className="mt-2 px-6 py-2 bg-yellow-500 text-black font-bold rounded-full shadow-lg hover:scale-105 transition-all"
+                  className="px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold rounded-full shadow-lg hover:shadow-yellow-400/50 hover:scale-105 transition-all text-xl"
                 >
-                  Buy ({SKINS[selectedSkinIndex].cost}⭐)
+                  Unlock ({SKINS[selectedSkinIndex].cost}⭐)
                 </button>
               )}
             </div>
 
-            {/* Play Button */}
-            <button
-              onClick={startGame}
-              disabled={!unlockedSkins.has(SKINS[selectedSkinIndex]?.id)}
-              className={`px-12 py-4 text-xl font-bold rounded-full shadow-xl transition-all ${
-                unlockedSkins.has(SKINS[selectedSkinIndex]?.id)
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:shadow-cyan-600/50 hover:scale-105 animate-pulse'
-                  : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-              }`}
-            >
-              Play Game
-            </button>
+            {/* Bottom Buttons */}
+            <div className="flex gap-6">
+              <button
+                onClick={startGame}
+                disabled={!unlockedSkins.has(SKINS[selectedSkinIndex].id)}
+                className={`px-10 py-4 text-xl font-bold rounded-full shadow-xl transition-all ${
+                  unlockedSkins.has(SKINS[selectedSkinIndex].id)
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-green-500/50 hover:scale-105 animate-pulse'
+                    : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                }`}
+              >
+                Play Game
+              </button>
+              <button
+                onClick={exitGame}
+                className="px-10 py-4 bg-red-500 text-white text-xl font-bold rounded-full shadow-lg hover:bg-red-600 hover:scale-105 transition-all"
+              >
+                Exit
+              </button>
+            </div>
           </div>
-
-          {/* Bubble Animation */}
-          <style>{`
-            @keyframes bubble {
-              0% { transform: translateY(0) scale(1); opacity: 0.7; }
-              50% { opacity: 0.9; }
-              100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
-            }
-            .animate-bubble { animation: bubble linear infinite; }
-          `}</style>
         </div>
       )}
 
