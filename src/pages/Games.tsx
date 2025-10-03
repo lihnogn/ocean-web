@@ -667,7 +667,7 @@ function GameCard({
           {gameKey === "game1" && (
             <video
               className="w-full h-full object-cover rounded-xl"
-              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg1?updatedAt=1759518353355"
+              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg1?updatedAt=1759520180332"
               autoPlay
               muted
               loop
@@ -678,7 +678,7 @@ function GameCard({
           {gameKey === "game2" && (
             <video
               className="w-full h-full object-cover rounded-xl"
-              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg2?updatedAt=1759518353732"
+              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg2?updatedAt=1759520181622"
               autoPlay
               muted
               loop
@@ -689,7 +689,7 @@ function GameCard({
           {gameKey === "game3" && (
             <video
               className="w-full h-full object-cover rounded-xl"
-              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg3?updatedAt=1759518356658"
+              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/vidg3?updatedAt=1759520180647"
               autoPlay
               muted
               loop
