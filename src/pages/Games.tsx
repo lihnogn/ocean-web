@@ -434,45 +434,88 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
       {/* Character Selection */}
       {mode === 'select' && (
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
-          <h2 className="text-4xl font-bold text-white mb-8 text-center">Choose Your Character</h2>
+        <div className="relative z-10 flex flex-col min-h-screen">
+          {/* Background Video */}
+          <video className="absolute inset-0 w-full h-full object-cover" src={BG_VIDEO} autoPlay muted loop playsInline preload="auto" />
+          <div className="absolute inset-0 bg-black/50" />
 
-          {/* Character Cards */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {CHARACTERS.map((char) => (
-              <div
-                key={char.id}
-                className={`relative w-32 h-32 rounded-xl overflow-hidden cursor-pointer transition-all ${
-                  selectedCharacter === char.id ? 'ring-4 ring-cyan-400 scale-105' : ''
-                } ${char.unlocked ? 'hover:scale-105' : 'opacity-50 cursor-not-allowed'}`}
-                onClick={() => char.unlocked && setSelectedCharacter(char.id)}
-              >
-                <img src={char.img} alt={char.name} className="w-full h-full object-cover" />
-                {!char.unlocked && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="text-white text-3xl">🔒</span>
-                  </div>
-                )}
-              </div>
-            ))}
+          {/* Header */}
+          <div className="relative z-20 p-6">
+            <h1 className="text-4xl md:text-5xl font-bold text-white text-center mb-8 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+              Choose Your Character
+            </h1>
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-4">
+          {/* Character Grid */}
+          <div className="relative z-20 flex-1 flex items-center justify-center px-6 pb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl">
+              {CHARACTERS.map((char) => (
+                <div
+                  key={char.id}
+                  className={`relative bg-white/10 backdrop-blur-lg rounded-2xl p-4 border transition-all duration-300 ${
+                    selectedCharacter === char.id
+                      ? 'border-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.6)] scale-105'
+                      : 'border-white/20 hover:border-white/40 hover:scale-105'
+                  } ${!char.unlocked ? 'opacity-75' : ''}`}
+                >
+                  {/* Character Image */}
+                  <div className="relative mb-4">
+                    <img
+                      src={char.img}
+                      alt={char.name}
+                      className="w-full h-32 object-contain rounded-xl"
+                    />
+                    {!char.unlocked && (
+                      <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center">
+                        <span className="text-white text-3xl">🔒</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Character Name */}
+                  <h3 className="text-xl font-bold text-white text-center mb-4">{char.name}</h3>
+
+                  {/* Action Button */}
+                  {char.unlocked ? (
+                    <button
+                      onClick={() => setSelectedCharacter(char.id)}
+                      className={`w-full py-3 px-4 rounded-xl font-semibold transition-all ${
+                        selectedCharacter === char.id
+                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-lg hover:scale-105'
+                      }`}
+                    >
+                      Select
+                    </button>
+                  ) : (
+                    <button
+                      className="w-full py-3 px-4 rounded-xl font-semibold bg-gray-600 text-gray-300 cursor-not-allowed flex items-center justify-center gap-2"
+                      disabled
+                    >
+                      <span>🔒</span> Buy
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Buttons */}
+          <div className="relative z-20 p-6 flex justify-center gap-6">
             <button
               onClick={startGame}
               disabled={!selectedCharacter}
-              className={`px-8 py-4 text-xl font-bold rounded-full transition-all ${
+              className={`px-8 py-4 text-xl font-bold rounded-2xl transition-all ${
                 selectedCharacter
-                  ? 'bg-green-500 text-white hover:bg-green-600 hover:scale-105'
-                  : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:shadow-green-500/50 hover:scale-105 animate-pulse'
+                  : 'bg-gray-600 text-gray-300 cursor-not-allowed'
               }`}
             >
               Start Game
             </button>
             <button
               onClick={exitGame}
-              className="px-8 py-4 bg-red-500 text-white text-xl font-bold rounded-full hover:bg-red-600 hover:scale-105 transition-all"
+              className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xl font-bold rounded-2xl shadow-lg hover:shadow-red-500/50 hover:scale-105 transition-all"
             >
               Exit
             </button>
