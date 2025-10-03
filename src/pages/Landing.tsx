@@ -20,7 +20,7 @@ const Landing = () => {
       {/* Content */}
       <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
         <img
-          src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/chu%20chinh?updatedAt=1759522141811"
+          src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ch%E1%BB%AF%20c%E1%BB%A7a%20b%C3%ACa%20n%C3%A8?updatedAt=1759531155685"
           alt="Ocean Adventure"
           className="mx-auto mb-6 w-full max-w-[80%] h-auto"
         />
@@ -34,7 +34,7 @@ const Landing = () => {
         <Button
           onClick={() => navigate("/auth")}
           size="lg"
-          className="ocean-button bg-primary hover:bg-primary/90 text-white px-8 py-6 text-xl font-semibold rounded-2xl shadow-[0_0_30px_hsl(var(--glow-cyan)/0.6)]"
+          className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(168,85,247,0.8)] bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm px-8 py-6 text-xl font-semibold rounded-2xl"
         >
           <Sparkles className="w-6 h-6 mr-2 animate-sparkle" />
           Start Journey

@@ -35,7 +35,7 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Erro
             )}
             <div className="mt-4">
               <button
-                className="px-4 py-2 rounded bg-primary text-white hover:bg-primary/90"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]"
                 onClick={() => this.setState({ hasError: false, error: undefined })}
               >
                 Thử lại

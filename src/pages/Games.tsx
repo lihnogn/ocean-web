@@ -25,7 +25,7 @@ const GAME_META: Record<
   game3: {
     title: "Ocean Word Hunt",
     description:
-      "Dive into ocean currents! Find missing letters in 15 ocean words by clicking floating treasures. Complete each word to earn Lucky Stars!",
+      "Dive into ocean currents! Complete each word to earn Lucky Stars!",
     gradient: "from-teal-200/70 via-cyan-200/70 to-sky-200/70",
     accent: "shadow-teal-400/50",
   },
@@ -552,7 +552,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
               ) : (
                 <button
                   onClick={() => unlockSkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)}
-                  className="px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold rounded-full shadow-lg hover:shadow-yellow-400/50 hover:scale-105 transition-all text-xl"
+                  className="px-8 py-4 rounded-2xl font-bold shadow-lg hover:scale-105 transition-all text-xl bg-gradient-to-r from-yellow-200/30 via-orange-300/35 to-amber-300/40 hover:from-yellow-100/40 hover:via-orange-200/45 hover:to-amber-200/50 text-amber-50 border border-yellow-200/40 backdrop-blur-sm"
                 >
                   Buy ({SKINS[selectedSkinIndex].cost}⭐)
                 </button>
@@ -564,17 +564,17 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
               <button
                 onClick={startGame}
                 disabled={!selectedSkin}
-                className={`px-10 py-4 text-xl font-bold rounded-full shadow-xl transition-all ${
+                className={`px-10 py-4 text-xl font-bold rounded-2xl shadow-xl transition-all ${
                   selectedSkin
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-green-500/50 hover:scale-105 animate-pulse'
-                    : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] animate-pulse'
+                    : 'bg-slate-500/30 text-slate-300 cursor-not-allowed border border-slate-400/30 backdrop-blur-sm'
                 }`}
               >
                 Play Game
               </button>
               <button
                 onClick={exitGame}
-                className="px-10 py-4 bg-red-500 text-white text-xl font-bold rounded-full shadow-lg hover:bg-red-600 hover:scale-105 transition-all"
+                className="px-10 py-4 text-xl font-bold rounded-2xl shadow-xl transition-all bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]"
               >
                 Exit
               </button>
@@ -588,7 +588,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
         <>
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
           <div className="absolute top-4 left-4 text-white">Stars: {sessionStars}</div>
-          <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 bg-white/80 text-black rounded">Exit</button>
+          <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 rounded-xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]">Exit</button>
         </>
       )}
 
@@ -599,8 +599,8 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
             <div className="text-3xl mb-4">Game Over</div>
             <div>You earned {sessionStars} stars</div>
             <div className="mt-4 flex gap-4">
-              <button onClick={() => setMode('select')} className="px-4 py-2 bg-blue-500 text-white rounded">Play Again</button>
-              <button onClick={exitGame} className="px-4 py-2 bg-red-500 text-white rounded">Exit</button>
+              <button onClick={() => setMode('select')} className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]">Play Again</button>
+              <button onClick={exitGame} className="px-4 py-2 rounded-xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]">Exit</button>
             </div>
           </div>
         </div>
@@ -613,8 +613,8 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
             <div className="text-3xl mb-4">Congratulations!</div>
             <div>You earned {sessionStars} stars</div>
             <div className="mt-4 flex gap-4">
-              <button onClick={() => setMode('select')} className="px-4 py-2 bg-blue-500 text-white rounded">Play Again</button>
-              <button onClick={exitGame} className="px-4 py-2 bg-red-500 text-white rounded">Exit</button>
+              <button onClick={() => setMode('select')} className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]">Play Again</button>
+              <button onClick={exitGame} className="px-4 py-2 rounded-xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]">Exit</button>
             </div>
           </div>
         </div>
@@ -655,7 +655,7 @@ function GameCard({
       <div className="relative z-10 flex flex-col h-full">
         <div className="flex items-center gap-3 mb-3">
           <div className="h-16 w-16 rounded-xl bg-white/40 flex items-center justify-center shadow-inner">
-            {gameKey === "game1" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg1?updatedAt=1759520737721" alt="Game 1 Icon" className="w-24 h-24 object-contain" />}
+            {gameKey === "game1" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg1?updatedAt=1759532429487" alt="Game 1 Icon" className="w-24 h-24 object-contain" />}
             {gameKey === "game2" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg2?updatedAt=1759520737598" alt="Game 2 Icon" className="w-24 h-24 object-contain" />}
             {gameKey === "game3" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg3?updatedAt=1759520737410" alt="Game 3 Icon" className="w-24 h-24 object-contain" />}
           </div>
@@ -708,7 +708,7 @@ function GameCard({
               onSparkle(0, rect.left + rect.width / 2, rect.top);
               onStart();
             }}
-            className="relative inline-flex items-center justify-center w-full md:w-auto px-5 py-3 rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-slate-900 font-semibold shadow-[0_10px_30px_rgba(16,185,129,0.45)] transition-transform duration-200 active:scale-95 hover:scale-[1.03] focus:scale-[1.03] focus:outline-none"
+            className="relative inline-flex items-center justify-center w-full md:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]"
           >
             <span className="relative z-10">Start</span>
             <span className="absolute inset-0 rounded-2xl ring-2 ring-white/60 -slow" />
@@ -768,13 +768,13 @@ function TutorialModal({
         </ul>
         <div className="flex gap-3 justify-end">
           <button
-            className="px-4 py-2 rounded-xl bg-white/70 hover:bg-white text-slate-900 font-medium shadow"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]"
             onClick={onClose}
           >
             Close
           </button>
           <button
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold shadow"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]"
             onClick={onStart}
           >
             Start Game
@@ -1166,7 +1166,7 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
       {!isComplete && (
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-[80] px-4 py-2 rounded-xl bg-white/80 text-slate-900 font-semibold shadow hover:bg-white active:scale-95"
+          className="absolute top-4 right-4 z-[80] px-4 py-2 rounded-xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]"
         >
           Close
         </button>
@@ -1191,7 +1191,7 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
           {/* Skip button */}
           <button
             onClick={skipWord}
-            className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg active:scale-95 mb-4"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-200/30 via-purple-300/35 to-fuchsia-300/40 hover:from-violet-100/40 hover:via-purple-200/45 hover:to-fuchsia-200/50 text-violet-50 border border-violet-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]"
           >
             Skip Word
           </button>
@@ -1284,7 +1284,7 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
 
               <div className="flex gap-6 justify-center">
                 <button
-                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-600 text-white font-bold text-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 "
+                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]"
                   onClick={() => {
                     resetGame();
                     setTimeout(() => {
@@ -1297,7 +1297,7 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
                   Play Again
                 </button>
                 <button
-                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-slate-600 to-slate-700 text-white font-bold text-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                  className="px-10 py-4 rounded-2xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]"
                   onClick={onClose}
                 >
                   Exit
@@ -1451,8 +1451,8 @@ function GameGuess({ onEarnStars }: { onEarnStars: (n: number, x?: number, y?: n
           className="flex-1 rounded-xl border border-slate-300 bg-white/80 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
         />
         <div className="flex gap-3">
-          <button type="submit" className="px-4 py-3 rounded-xl bg-emerald-400 text-slate-900 font-semibold shadow hover:brightness-105 active:scale-95">Submit</button>
-          <button type="button" className="px-4 py-3 rounded-xl bg-cyan-400 text-slate-900 font-semibold shadow hover:brightness-105 active:scale-95" onClick={useHint}>Hint</button>
+          <button type="submit" className="px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-200/30 via-green-300/35 to-teal-300/40 hover:from-emerald-100/40 hover:via-green-200/45 hover:to-teal-200/50 text-emerald-50 border border-emerald-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]">Submit</button>
+          <button type="button" className="px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)]" onClick={useHint}>Hint</button>
         </div>
       </form>
       {hint && <div className="rounded-xl bg-white/70 border border-slate-300 px-4 py-3">{hint}</div>}

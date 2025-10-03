@@ -127,7 +127,7 @@ const Auth = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full ocean-button bg-primary hover:bg-primary/90 text-white py-6 text-lg font-semibold rounded-xl"
+              className="w-full relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm py-6 text-lg font-semibold rounded-xl"
             >
               {loading ? "Loading..." : isLogin ? "Dive In" : "Start Adventure"}
             </Button>
