@@ -217,24 +217,31 @@ const G2_SKINS: G2Skin[] = [
 type G2Obstacle = { id: number; type: number; x: number; y: number; w: number; h: number; passed: boolean; vx: number };
 type G2Pickup = { id: number; x: number; y: number; w: number; h: number; collected: boolean };
 
-// Game 2: Dodge the Hunter - Simplified Version
+// Game 2: Dodge the Hunter - Complete Implementation
 function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarnStars: (n: number, x?: number, y?: number) => void }) {
+  const { stars: globalStars, addStars: addStarsGlobal } = useStars();
   const [mode, setMode] = useState<'select' | 'playing' | 'gameover' | 'win'>('select');
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
+  const [selectedSkin, setSelectedSkin] = useState<string | null>(null);
   const [sessionStars, setSessionStars] = useState(0);
+  const [unlockedSkins, setUnlockedSkins] = useState<Set<string>>(new Set(['crab', 'shrimp', 'oyster']));
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
 
-  // Game assets
-  const BG_VIDEO = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BG2.mp4?updatedAt=1759345792705';
+  // ===== ASSETS (exact URLs) =====
+  const BG_VIDEO = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game2.%20mp4?updatedAt=1759396573159';
 
-  const CHARACTERS = [
-    { id: 'crab', name: 'Crab', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/43.png?updatedAt=1759350573972', unlocked: true },
-    { id: 'shrimp', name: 'Shrimp', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/51.png?updatedAt=1759343441290', unlocked: true },
-    { id: 'oyster', name: 'Oyster', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', unlocked: true },
-    { id: 'turtle', name: 'Turtle', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/50.png?updatedAt=1759343440752', unlocked: false },
-    { id: 'jellyfish', name: 'Jellyfish', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/45.png?updatedAt=1759350574039', unlocked: false },
+  const SKINS = [
+    { id: 'crab', name: 'CRAB', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/43.png?updatedAt=1759350573972', cost: 0 },
+    { id: 'shrimp', name: 'SHRIMP', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/51.png?updatedAt=1759343441290', cost: 0 },
+    { id: 'oyster', name: 'OYSTER', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/48.png?updatedAt=1759343440403', cost: 0 },
+    { id: 'urchin', name: 'URCHIN', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/44.png?updatedAt=1759350574040', cost: 2 },
+    { id: 'turtle', name: 'TURTLE SEA', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/50.png?updatedAt=1759343440752', cost: 2 },
+    { id: 'puffer', name: 'PUFFER FISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/46.png?updatedAt=1759343441009', cost: 3 },
+    { id: 'seahorse', name: 'SEAHORSE', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/42.png?updatedAt=1759343441030', cost: 4 },
+    { id: 'zebrafish', name: 'ZEBRAFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/47.png?updatedAt=1759343440536', cost: 4 },
+    { id: 'butterflyfish', name: 'BUTTERFLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/49.png?updatedAt=1759343440550', cost: 4 },
+    { id: 'jellyfish', name: 'JELLYFISH', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/45.png?updatedAt=1759350574039', cost: 7 },
   ];
 
   const OBSTACLE_IMAGES = [
@@ -249,52 +256,46 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
   const STAR_IMG = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/34.png?updatedAt=1759317102787';
 
-  // Game state
-  const playerRef = useRef<{ x: number; y: number; vx: number; img: HTMLImageElement | null } | null>(null);
-  const obstaclesRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement }>>([]);
-  const starsRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement }>>([]);
-  const keysRef = useRef<Set<string>>(new Set());
+  // ===== GAME STATE =====
+  const playerRef = useRef<{ x: number; y: number; vx: number; img: HTMLImageElement } | null>(null);
+  const obstaclesRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement; id: number }>>([]);
+  const starsRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement; id: number }>>([]);
+  const spawnQueueRef = useRef<Array<'obstacle' | 'star'>>([]);
   const lastSpawnTimeRef = useRef(0);
-  const spawnIntervalRef = useRef(1500);
-  const globalSpeedRef = useRef(100);
-  const spawnQueueRef = useRef<Array<{ type: 'obstacle' | 'star'; img: HTMLImageElement }>>([]);
+  const spawnIntervalRef = useRef(900);
+  const globalSpeedRef = useRef(150);
+  const keysRef = useRef<Set<string>>(new Set());
 
+  // ===== EXIT HANDLER =====
   const exitGame = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     onEarnStars(sessionStars);
     onClose();
   };
 
-  const startGame = async () => {
-    if (!selectedCharacter) return;
+  // ===== UNLOCK SKIN (ATOMIC) =====
+  const unlockSkin = (skinId: string, cost: number) => {
+    if (globalStars >= cost) {
+      // Atomic operation: deduct stars and unlock
+      addStarsGlobal(-cost);
+      setUnlockedSkins(prev => new Set([...prev, skinId]));
+      toast.success(`Unlocked ${SKINS.find(s => s.id === skinId)?.name}!`);
+    } else {
+      toast.error('Not enough stars!');
+    }
+  };
+
+  // ===== START GAME =====
+  const startGame = () => {
+    if (!selectedSkin || !unlockedSkins.has(selectedSkin)) return;
 
     setMode('playing');
     setSessionStars(0);
 
-    // Load assets
-    const playerImg = new Image();
-    playerImg.src = CHARACTERS.find(c => c.id === selectedCharacter)?.img || '';
-
-    const obstacles: HTMLImageElement[] = [];
-    for (const url of OBSTACLE_IMAGES) {
-      const img = new Image();
-      img.src = url;
-      obstacles.push(img);
-    }
-
-    const starImg = new Image();
-    starImg.src = STAR_IMG;
-
-    // Create spawn queue: 7 obstacles x 2, 3 stars
-    const queue: Array<{ type: 'obstacle' | 'star'; img: HTMLImageElement }> = [];
-    for (let i = 0; i < 2; i++) {
-      OBSTACLE_IMAGES.forEach((_, idx) => {
-        queue.push({ type: 'obstacle', img: obstacles[idx] });
-      });
-    }
-    for (let i = 0; i < 3; i++) {
-      queue.push({ type: 'star', img: starImg });
-    }
+    // Create spawn queue: 14 obstacles + 3 stars, shuffled
+    const queue: Array<'obstacle' | 'star'> = [];
+    for (let i = 0; i < 7; i++) queue.push('obstacle', 'obstacle');
+    for (let i = 0; i < 3; i++) queue.push('star');
     // Shuffle
     for (let i = queue.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -302,13 +303,16 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     }
     spawnQueueRef.current = queue;
 
-    // Initialize player
+    // Initialize player at bottom center
     const canvas = canvasRef.current;
     if (canvas) {
       const rect = canvas.getBoundingClientRect();
+      const skin = SKINS.find(s => s.id === selectedSkin)!;
+      const playerImg = new Image();
+      playerImg.src = skin.img;
       playerRef.current = {
         x: rect.width / 2 - 40,
-        y: rect.height - 120,
+        y: rect.height - 100,
         vx: 0,
         img: playerImg,
       };
@@ -317,26 +321,24 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     obstaclesRef.current = [];
     starsRef.current = [];
     lastSpawnTimeRef.current = 0;
-    spawnIntervalRef.current = 1500;
-    globalSpeedRef.current = 100;
+    spawnIntervalRef.current = 900;
+    globalSpeedRef.current = 150;
 
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(gameLoop);
   };
 
+  // ===== GAME LOOP =====
   const gameLoop = (timestamp: number) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
-
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext('2d')!;
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
 
-    const player = playerRef.current;
+    const player = playerRef.current!;
     const dt = Math.min(0.05, (timestamp - (lastSpawnTimeRef.current || timestamp)) / 1000);
     lastSpawnTimeRef.current = timestamp;
-
-    if (!player) return;
 
     // Handle input
     player.vx = 0;
@@ -345,29 +347,49 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     player.x += player.vx * dt;
     player.x = Math.max(0, Math.min(rect.width - 80, player.x));
 
-    // Spawn
+    // Spawn logic
     if (spawnQueueRef.current.length > 0 && timestamp - lastSpawnTimeRef.current > spawnIntervalRef.current) {
-      const item = spawnQueueRef.current.shift()!;
-      const x = Math.random() * (rect.width - 100) + 50;
-      if (item.type === 'obstacle') {
-        obstaclesRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img: item.img });
-      } else {
-        starsRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img: item.img });
+      const type = spawnQueueRef.current.shift()!;
+
+      // Random X position with collision avoidance
+      let x = Math.random() * (rect.width - 100) + 50;
+      // Simple collision check with existing objects
+      const existing = [...obstaclesRef.current, ...starsRef.current];
+      for (let attempt = 0; attempt < 5; attempt++) {
+        let collision = false;
+        for (const obj of existing) {
+          if (Math.abs(x - obj.x) < 100) collision = true;
+        }
+        if (!collision) break;
+        x = Math.random() * (rect.width - 100) + 50;
       }
+
+      if (type === 'obstacle') {
+        const obsIndex = Math.floor(Math.random() * 7);
+        const img = new Image();
+        img.src = OBSTACLE_IMAGES[obsIndex];
+        obstaclesRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img, id: Date.now() + Math.random() });
+      } else {
+        const img = new Image();
+        img.src = STAR_IMG;
+        starsRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img, id: Date.now() + Math.random() });
+      }
+
       lastSpawnTimeRef.current = timestamp;
-      spawnIntervalRef.current = Math.max(500, spawnIntervalRef.current - 50);
-      globalSpeedRef.current *= 1.02;
+      spawnIntervalRef.current = Math.max(350, spawnIntervalRef.current - 15);
+      globalSpeedRef.current *= 1.01;
     }
 
     // Update obstacles
     obstaclesRef.current = obstaclesRef.current.filter(obs => {
       obs.y += obs.vy * dt;
       if (obs.y > rect.height + 100) {
-        setSessionStars(s => s + 1);
+        setSessionStars(s => s + 1); // dodged
         return false;
       }
-      // Collision
-      if (player.x < obs.x + 60 && player.x + 80 > obs.x && player.y < obs.y + 60 && player.y + 80 > obs.y) {
+      // Collision detection (rectangle with padding)
+      const hitbox = { x: player.x + 10, y: player.y + 10, w: 60, h: 60 };
+      if (hitbox.x < obs.x + 60 && hitbox.x + hitbox.w > obs.x && hitbox.y < obs.y + 60 && hitbox.y + hitbox.h > obs.y) {
         setMode('gameover');
         return false;
       }
@@ -378,9 +400,11 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     starsRef.current = starsRef.current.filter(star => {
       star.y += star.vy * dt;
       if (star.y > rect.height + 100) return false;
-      // Collision
-      if (player.x < star.x + 32 && player.x + 80 > star.x && player.y < star.y + 32 && player.y + 80 > star.y) {
+      // Collision detection
+      const hitbox = { x: player.x + 10, y: player.y + 10, w: 60, h: 60 };
+      if (hitbox.x < star.x + 32 && hitbox.x + hitbox.w > star.x && hitbox.y < star.y + 32 && hitbox.y + hitbox.h > star.y) {
         setSessionStars(s => s + 2);
+        // Play sparkle sound (placeholder)
         return false;
       }
       return true;
@@ -388,12 +412,12 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
     // Draw
     ctx.clearRect(0, 0, rect.width, rect.height);
-    // Background is video, handled by CSS
+    // Background handled by CSS video
 
     // Draw player with glow
     ctx.shadowColor = 'cyan';
-    ctx.shadowBlur = 10;
-    ctx.drawImage(player.img!, player.x, player.y, 80, 80);
+    ctx.shadowBlur = 15;
+    ctx.drawImage(player.img, player.x, player.y, 80, 80);
     ctx.shadowBlur = 0;
 
     // Draw obstacles
@@ -402,7 +426,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     // Draw stars
     starsRef.current.forEach(star => ctx.drawImage(star.img, star.x, star.y, 32, 32));
 
-    // Check win
+    // Check win condition
     if (spawnQueueRef.current.length === 0 && obstaclesRef.current.length === 0 && starsRef.current.length === 0) {
       setMode('win');
       return;
@@ -411,6 +435,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     rafRef.current = requestAnimationFrame(gameLoop);
   };
 
+  // ===== CONTROLS =====
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'd'].includes(e.key)) {
@@ -428,11 +453,11 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[70]">
+    <div id="game2-root" className="fixed inset-0 z-[70]">
       {/* Background Video */}
       <video className="absolute inset-0 w-full h-full object-cover" src={BG_VIDEO} autoPlay muted loop playsInline preload="auto" />
 
-      {/* Character Selection */}
+      {/* Character Selection (Shopping Style) */}
       {mode === 'select' && (
         <div className="relative z-10 flex flex-col min-h-screen">
           {/* Background Video */}
@@ -449,23 +474,23 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
           {/* Character Grid */}
           <div className="relative z-20 flex-1 flex items-center justify-center px-6 pb-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl">
-              {CHARACTERS.map((char) => (
+              {SKINS.map((skin) => (
                 <div
-                  key={char.id}
+                  key={skin.id}
                   className={`relative bg-white/10 backdrop-blur-lg rounded-2xl p-4 border transition-all duration-300 ${
-                    selectedCharacter === char.id
+                    selectedSkin === skin.id
                       ? 'border-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.6)] scale-105'
                       : 'border-white/20 hover:border-white/40 hover:scale-105'
-                  } ${!char.unlocked ? 'opacity-75' : ''}`}
+                  } ${!unlockedSkins.has(skin.id) ? 'opacity-75' : ''}`}
                 >
                   {/* Character Image */}
                   <div className="relative mb-4">
                     <img
-                      src={char.img}
-                      alt={char.name}
+                      src={skin.img}
+                      alt={skin.name}
                       className="w-full h-32 object-contain rounded-xl"
                     />
-                    {!char.unlocked && (
+                    {!unlockedSkins.has(skin.id) && (
                       <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center">
                         <span className="text-white text-3xl">🔒</span>
                       </div>
@@ -473,14 +498,14 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
                   </div>
 
                   {/* Character Name */}
-                  <h3 className="text-xl font-bold text-white text-center mb-4">{char.name}</h3>
+                  <h3 className="text-xl font-bold text-white text-center mb-4">{skin.name}</h3>
 
                   {/* Action Button */}
-                  {char.unlocked ? (
+                  {unlockedSkins.has(skin.id) ? (
                     <button
-                      onClick={() => setSelectedCharacter(char.id)}
+                      onClick={() => setSelectedSkin(skin.id)}
                       className={`w-full py-3 px-4 rounded-xl font-semibold transition-all ${
-                        selectedCharacter === char.id
+                        selectedSkin === skin.id
                           ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
                           : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-lg hover:scale-105'
                       }`}
@@ -489,10 +514,10 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
                     </button>
                   ) : (
                     <button
-                      className="w-full py-3 px-4 rounded-xl font-semibold bg-gray-600 text-gray-300 cursor-not-allowed flex items-center justify-center gap-2"
-                      disabled
+                      onClick={() => unlockSkin(skin.id, skin.cost)}
+                      className="w-full py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-yellow-400 to-orange-400 text-black shadow-lg hover:shadow-yellow-400/50 hover:scale-105 transition-all"
                     >
-                      <span>🔒</span> Buy
+                      Buy ({skin.cost}⭐)
                     </button>
                   )}
                 </div>
@@ -504,14 +529,14 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
           <div className="relative z-20 p-6 flex justify-center gap-6">
             <button
               onClick={startGame}
-              disabled={!selectedCharacter}
+              disabled={!selectedSkin}
               className={`px-8 py-4 text-xl font-bold rounded-2xl transition-all ${
-                selectedCharacter
+                selectedSkin
                   ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:shadow-green-500/50 hover:scale-105 animate-pulse'
                   : 'bg-gray-600 text-gray-300 cursor-not-allowed'
               }`}
             >
-              Start Game
+              Play Game
             </button>
             <button
               onClick={exitGame}
@@ -527,13 +552,8 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
       {mode === 'playing' && (
         <>
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
-          <div className="absolute top-4 left-4 text-white text-2xl">Stars: {sessionStars}</div>
-          <button
-            onClick={exitGame}
-            className="absolute top-4 right-4 px-6 py-3 bg-white/90 text-black rounded-full hover:bg-white transition-all"
-          >
-            Exit
-          </button>
+          <div className="absolute top-4 left-4 text-white">Stars: {sessionStars}</div>
+          <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 bg-white/80 text-black rounded">Exit</button>
         </>
       )}
 
@@ -541,21 +561,11 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
       {mode === 'gameover' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/70">
           <div className="bg-white p-8 rounded-2xl text-center">
-            <h2 className="text-3xl font-bold mb-4">Game Over</h2>
-            <p className="text-xl mb-6">You earned {sessionStars} stars</p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setMode('select')}
-                className="px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all"
-              >
-                Play Again
-              </button>
-              <button
-                onClick={exitGame}
-                className="px-6 py-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all"
-              >
-                Exit
-              </button>
+            <div className="text-3xl mb-4">Game Over</div>
+            <div>You earned {sessionStars} stars</div>
+            <div className="mt-4 flex gap-4">
+              <button onClick={() => setMode('select')} className="px-4 py-2 bg-blue-500 text-white rounded">Play Again</button>
+              <button onClick={exitGame} className="px-4 py-2 bg-red-500 text-white rounded">Exit</button>
             </div>
           </div>
         </div>
@@ -565,21 +575,11 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
       {mode === 'win' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/70">
           <div className="bg-white p-8 rounded-2xl text-center">
-            <h2 className="text-3xl font-bold mb-4">Congratulations!</h2>
-            <p className="text-xl mb-6">You earned {sessionStars} stars</p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setMode('select')}
-                className="px-6 py-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all"
-              >
-                Play Again
-              </button>
-              <button
-                onClick={exitGame}
-                className="px-6 py-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all"
-              >
-                Exit
-              </button>
+            <div className="text-3xl mb-4">Congratulations!</div>
+            <div>You earned {sessionStars} stars</div>
+            <div className="mt-4 flex gap-4">
+              <button onClick={() => setMode('select')} className="px-4 py-2 bg-blue-500 text-white rounded">Play Again</button>
+              <button onClick={exitGame} className="px-4 py-2 bg-red-500 text-white rounded">Exit</button>
             </div>
           </div>
         </div>
