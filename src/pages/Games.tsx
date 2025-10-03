@@ -503,27 +503,138 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
       {/* Skin Selection */}
       {mode === 'select' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
-          <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 bg-white/80 text-black rounded">Exit</button>
-          <div className="text-white text-2xl mb-4">Choose Your Character</div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setSelectedSkinIndex((i) => (i - 1 + SKINS.length) % SKINS.length)}>◀</button>
-            <div className="text-center">
-              <img src={SKINS[selectedSkinIndex].img} alt={SKINS[selectedSkinIndex].name} className="w-32 h-32 mx-auto mb-2" />
-              <div className="text-white">{SKINS[selectedSkinIndex].name}</div>
-              {SKINS[selectedSkinIndex].cost > 0 && (
-                <div className="text-yellow-300">{SKINS[selectedSkinIndex].cost} ⭐</div>
-              )}
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-900/40 via-cyan-900/40 to-teal-900/40">
+          {/* Floating Bubbles */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {Array.from({ length: 15 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full bg-white/20 animate-bubble"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  bottom: `-50px`,
+                  width: `${20 + Math.random() * 40}px`,
+                  height: `${20 + Math.random() * 40}px`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${8 + Math.random() * 7}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Top UI */}
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/30 rounded-full px-4 py-2 backdrop-blur-md">
+            <span className="text-yellow-300 text-2xl">⭐</span>
+            <span className="text-white font-bold text-lg">{globalStars}</span>
+          </div>
+          <button
+            onClick={exitGame}
+            className="absolute top-4 right-4 z-20 w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+          >
+            <span className="text-blue-600 text-xl font-bold">✕</span>
+          </button>
+
+          {/* Main Content */}
+          <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              Choose Your Character
+            </h2>
+
+            {/* Carousel */}
+            <div className="relative flex items-center justify-center gap-8 mb-8">
+              <button
+                onClick={() => setSelectedSkinIndex((i) => (i - 1 + SKINS.length) % SKINS.length)}
+                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all"
+              >
+                <span className="text-blue-600 text-2xl">‹</span>
+              </button>
+
+              {/* Left Skin */}
+              <div className="opacity-50 blur-sm scale-75 transition-all duration-300">
+                <img
+                  src={SKINS[(selectedSkinIndex - 1 + SKINS.length) % SKINS.length].img}
+                  alt="Previous"
+                  className="w-24 h-24 md:w-32 md:h-32 object-contain"
+                />
+              </div>
+
+              {/* Center Skin */}
+              <div className="relative scale-100 transition-all duration-300">
+                <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-xl animate-pulse"></div>
+                <img
+                  src={SKINS[selectedSkinIndex].img}
+                  alt={SKINS[selectedSkinIndex].name}
+                  className="relative w-40 h-40 md:w-48 md:h-48 object-contain drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]"
+                />
+                <div className="text-center mt-4">
+                  <h3 className="text-2xl md:text-3xl font-bold text-white drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]">
+                    {SKINS[selectedSkinIndex].name}
+                  </h3>
+                  {SKINS[selectedSkinIndex].cost > 0 && (
+                    <p className="text-yellow-300 text-lg mt-2">
+                      {SKINS[selectedSkinIndex].cost} ⭐
+                    </p>
+                  )}
+                  <div className="mt-4">
+                    {unlockedSkins.has(SKINS[selectedSkinIndex].id) ? (
+                      <button
+                        onClick={startGame}
+                        className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 transition-all animate-pulse"
+                      >
+                        Select
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => buySkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)}
+                        className="px-8 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold rounded-full shadow-lg hover:shadow-yellow-400/50 hover:scale-105 transition-all"
+                      >
+                        Buy ({SKINS[selectedSkinIndex].cost}⭐)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Skin */}
+              <div className="opacity-50 blur-sm scale-75 transition-all duration-300">
+                <img
+                  src={SKINS[(selectedSkinIndex + 1) % SKINS.length].img}
+                  alt="Next"
+                  className="w-24 h-24 md:w-32 md:h-32 object-contain"
+                />
+              </div>
+
+              <button
+                onClick={() => setSelectedSkinIndex((i) => (i + 1) % SKINS.length)}
+                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all"
+              >
+                <span className="text-blue-600 text-2xl">›</span>
+              </button>
             </div>
-            <button onClick={() => setSelectedSkinIndex((i) => (i + 1) % SKINS.length)}>▶</button>
+
+            {/* Play Button */}
+            <button
+              onClick={startGame}
+              disabled={!unlockedSkins.has(SKINS[selectedSkinIndex].id)}
+              className={`px-12 py-4 text-xl font-bold rounded-full shadow-xl transition-all ${
+                unlockedSkins.has(SKINS[selectedSkinIndex].id)
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:shadow-cyan-600/50 hover:scale-105 animate-pulse'
+                  : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              Play Game
+            </button>
           </div>
-          <div className="mt-4 flex gap-4">
-            {unlockedSkins.has(SKINS[selectedSkinIndex].id) ? (
-              <button onClick={startGame} className="px-6 py-2 bg-green-500 text-white rounded">Play</button>
-            ) : (
-              <button onClick={() => buySkin(SKINS[selectedSkinIndex].id, SKINS[selectedSkinIndex].cost)} className="px-6 py-2 bg-yellow-500 text-black rounded">Buy ({SKINS[selectedSkinIndex].cost}⭐)</button>
-            )}
-          </div>
+
+          {/* Bubble Animation */}
+          <style>{`
+            @keyframes bubble {
+              0% { transform: translateY(0) scale(1); opacity: 0.7; }
+              50% { opacity: 0.9; }
+              100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
+            }
+            .animate-bubble { animation: bubble linear infinite; }
+          `}</style>
         </div>
       )}
 
