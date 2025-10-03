@@ -659,7 +659,7 @@ function GameCard({
           </div>
           <h2 className="text-2xl font-bold text-white drop-shadow-sm">{meta.title}</h2>
         </div>
-        <p className="text-white/85 mb-6">{meta.description}</p>
+        <p className="text-white/85 mb-6">Dive into ocean currents! Complete each word to earn Lucky Stars!</p>
 
         {/* placeholder art */}
         <div className="relative flex-1 min-h-[140px] rounded-2xl bg-white/30 border border-white/30 shadow-inner overflow-hidden">
