@@ -223,7 +223,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
   const [mode, setMode] = useState<'select' | 'playing' | 'gameover' | 'win'>('select');
   const [selectedSkin, setSelectedSkin] = useState<string | null>(null);
   const [sessionStars, setSessionStars] = useState(0);
-  const [unlockedSkins, setUnlockedSkins] = useState<Set<string>>(new Set(['crab', 'shrimp', 'oyster']));
+  const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0); // carousel index
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
