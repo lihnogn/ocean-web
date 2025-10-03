@@ -95,9 +95,16 @@ const Aquarium = () => {
 
           {/* Main Aquarium Display */}
           <div className="glass-effect rounded-3xl border border-white/20 p-8 md:p-12 min-h-[500px] relative overflow-hidden shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)]">
+            {/* Aquarium Background */}
+            <img
+              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/aquarium.gif?updatedAt=1759514411310"
+              alt="Aquarium Background"
+              className="absolute inset-0 w-full h-full object-cover rounded-3xl"
+            />
             {/* Decorative Elements */}
-            <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-accent/20 blur-3xl animate-float" />
-            
+            <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-accent/20 blur-3xl animate-float z-10" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-accent/20 blur-3xl animate-float z-10" />
+            <div className="absolute bottom-10 right-10 w-32 h-32 rounded-full bg-accent/20 blur-3xl animate-float z-10" />
             
             
             
@@ -107,7 +114,6 @@ const Aquarium = () => {
           {/* Quick Actions */}
           <div className="mt-8 grid md:grid-cols-4 gap-4">
             <Button 
-              onClick={() => navigate("/games")}
               className="ocean-button bg-primary hover:bg-primary/90 text-white h-20 text-lg font-semibold rounded-xl"
             >
               🎮 Play Games
