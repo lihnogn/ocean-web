@@ -369,7 +369,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
     obstaclesRef.current = [];
     starsRef.current = [];
-    lastSpawnTimeRef.current = performance.now();
+    lastSpawnTimeRef.current = 0;
     spawnIntervalRef.current = 900;
     globalSpeedRef.current = 150;
 
@@ -641,7 +641,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
       {/* Game Canvas */}
       {(mode === 'playing' || mode === 'paused') && (
         <>
-          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
           <div className="absolute top-4 left-4 text-white">Stars: {sessionStars}</div>
           <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 bg-white/80 text-black rounded">Exit</button>
           {mode === 'paused' && (
