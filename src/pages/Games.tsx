@@ -655,7 +655,9 @@ function GameCard({
       <div className="relative z-10 flex flex-col h-full">
         <div className="flex items-center gap-3 mb-3">
           <div className="h-10 w-10 rounded-xl bg-white/40 flex items-center justify-center shadow-inner">
-            <span className="text-2xl">{gameKey === "game1" ? "🐠" : gameKey === "game2" ? "🪝" : "🧠"}</span>
+            {gameKey === "game1" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg1?updatedAt=1759520737721" alt="Game 1 Icon" className="w-8 h-8 object-contain" />}
+            {gameKey === "game2" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg2?updatedAt=1759520737598" alt="Game 2 Icon" className="w-8 h-8 object-contain" />}
+            {gameKey === "game3" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg3?updatedAt=1759520737410" alt="Game 3 Icon" className="w-8 h-8 object-contain" />}
           </div>
           <h2 className="text-2xl font-bold text-white drop-shadow-sm">{meta.title}</h2>
         </div>
