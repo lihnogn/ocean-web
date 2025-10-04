@@ -1,8 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
-import { Home, Gamepad2, ShoppingBag, Fish, Users, User } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, Gamepad2, ShoppingBag, Fish, Users, User, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StarCount } from "@/components/StarCount";
 import { useStars } from "@/state/StarsContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 const navItems = [
   { path: "/", label: "Home", icon: Home },
@@ -10,12 +14,41 @@ const navItems = [
   { path: "/shop", label: "Shop", icon: ShoppingBag },
   { path: "/aquarium", label: "Aquarium", icon: Fish },
   { path: "/social", label: "Social", icon: Users },
-  { path: "/profile", label: "Profile", icon: User },
 ];
 
 export const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { stars } = useStars();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success('Logged out successfully!');
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Failed to log out');
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-white/20">
@@ -34,7 +67,7 @@ export const Navbar = () => {
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
-              
+
               return (
                 <Link
                   key={item.path}
@@ -50,6 +83,34 @@ export const Navbar = () => {
                 </Link>
               );
             })}
+
+            {/* Profile Link - only show if logged in */}
+            {isLoggedIn && (
+              <Link
+                to="/profile"
+                className={cn(
+                  "flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-all duration-300",
+                  "hover:scale-105 hover:bg-white/10",
+                  location.pathname.startsWith('/profile') && "bg-primary/20 text-primary shadow-[0_0_20px_hsl(var(--glow-cyan)/0.4)]"
+                )}
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden sm:inline text-sm font-medium">Profile</span>
+              </Link>
+            )}
+
+            {/* Logout Button - only show if logged in */}
+            {isLoggedIn && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-white/70 hover:text-white hover:bg-red-500/10 ml-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm ml-1">Logout</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

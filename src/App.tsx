@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import { StarsProvider } from "@/state/StarsContext";
 import { ShopProvider } from "@/state/ShopContext";
+import { SocialProvider } from "@/state/SocialContext";
 
 const queryClient = new QueryClient();
 
@@ -21,25 +22,28 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <StarsProvider>
       <ShopProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <ErrorBoundary>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/aquarium" element={<Aquarium />} />
-                <Route path="/games" element={<Games />} />
-                <Route path="/shop" element={<Shop />} />
-                <Route path="/social" element={<Social />} />
-                <Route path="/profile" element={<Profile />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </ErrorBoundary>
-        </TooltipProvider>
+        <SocialProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <ErrorBoundary>
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/aquarium" element={<Aquarium />} />
+                  <Route path="/games" element={<Games />} />
+                  <Route path="/shop" element={<Shop />} />
+                  <Route path="/social" element={<Social />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/profile/:userId" element={<Profile />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </ErrorBoundary>
+          </TooltipProvider>
+        </SocialProvider>
       </ShopProvider>
     </StarsProvider>
   </QueryClientProvider>

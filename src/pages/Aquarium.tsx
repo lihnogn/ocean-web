@@ -7,21 +7,221 @@ import { StarCount } from "@/components/StarCount";
 import { useStars } from "@/state/StarsContext";
 import { useShop } from "@/state/ShopContext";
 import { Button } from "@/components/ui/button";
-import { Package, X } from "lucide-react";
+import { Package, X, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { User, Session } from "@supabase/supabase-js";
 import avatarFish from "@/assets/avatar-fish.png";
+
+interface Position {
+  x: number;
+  y: number;
+}
 
 interface AquariumStateItem {
   id: string;
   type: "fish" | "decoration";
   imageUrl: string;
-  x: number; // Position in px
+  x: number; // Position in px (center point)
   y: number;
   scale: number;
   inAquarium: boolean;
   name: string;
 }
+
+// Animation configurations for different animals
+const ANIMAL_ANIMATIONS: Record<string, { className: string; duration: string; transform: string }> = {
+  'octopus': { 
+    className: 'animate-float-slow', 
+    duration: 'duration-[6s]', 
+    transform: 'translate-y-[-10px] translate-y-[10px]' 
+  },
+  'jellyfish': { 
+    className: 'animate-drift', 
+    duration: 'duration-[8s]', 
+    transform: 'translate-x-[-15px] translate-x-[15px]' 
+  },
+  'seahorse': { 
+    className: 'animate-sway', 
+    duration: 'duration-[5s]', 
+    transform: 'translate-y-[-5px] translate-y-[5px]' 
+  },
+  'clownfish': { 
+    className: 'animate-swim', 
+    duration: 'duration-[6s]', 
+    transform: 'translate-x-[-20px] translate-x-[20px]' 
+  },
+  'butterflyfish': { 
+    className: 'animate-swim', 
+    duration: 'duration-[7s]', 
+    transform: 'translate-x-[-20px] translate-x-[20px]' 
+  },
+  'blue-yellow-fish': { 
+    className: 'animate-swim', 
+    duration: 'duration-[6s]', 
+    transform: 'translate-x-[-20px] translate-x-[20px]' 
+  },
+  'blue-fish': { 
+    className: 'animate-swim', 
+    duration: 'duration-[8s]', 
+    transform: 'translate-x-[-20px] translate-x-[20px]' 
+  },
+  'fish-trio': { 
+    className: 'animate-swim', 
+    duration: 'duration-[7s]', 
+    transform: 'translate-x-[-20px] translate-x-[20px]' 
+  },
+};
+
+// AquariumItem Component - handles individual item rendering and interaction
+const AquariumItem: React.FC<{
+  item: AquariumStateItem;
+  isSelected: boolean;
+  onSelect: () => void;
+  onPositionUpdate: (x: number, y: number) => void;
+  onScaleUpdate: (scale: number) => void;
+  onRemove: () => void;
+  isDragging?: boolean;
+}> = ({ item, isSelected, onSelect, onPositionUpdate, onScaleUpdate, onRemove, isDragging = false }) => {
+  const itemRef = useRef<HTMLDivElement>(null);
+  const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    setDragStart({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handlePointerMove = useCallback((e: PointerEvent) => {
+    if (!itemRef.current) return;
+
+    const deltaX = Math.abs(e.clientX - dragStart.x);
+    const deltaY = Math.abs(e.clientY - dragStart.y);
+    const threshold = 5;
+
+    if (deltaX > threshold || deltaY > threshold) {
+      const rect = itemRef.current.parentElement?.getBoundingClientRect();
+      if (!rect) return;
+
+      // Calculate center position of the item
+      const centerX = e.clientX;
+      const centerY = e.clientY;
+
+      // 🛑 FIXED: Use fixed boundary calculation to prevent scale-like effects during drag
+      const itemSize = 100; // Fixed size for boundary calculation (not affected by scale)
+      const constrainedX = Math.max(itemSize / 2, Math.min(rect.width - itemSize / 2, centerX));
+      const constrainedY = Math.max(itemSize / 2, Math.min(rect.height - itemSize / 2, centerY));
+
+      // 🎯 POSITION ONLY - Scale is handled separately in UI buttons
+      onPositionUpdate(constrainedX, constrainedY);
+    }
+  }, [dragStart, onPositionUpdate]);
+
+  const handlePointerUp = useCallback(() => {
+    // Selection happens on pointer down, not up
+  }, []);
+
+  useEffect(() => {
+    if (dragStart.x !== 0 || dragStart.y !== 0) {
+      document.addEventListener('pointermove', handlePointerMove);
+      document.addEventListener('pointerup', handlePointerUp);
+      return () => {
+        document.removeEventListener('pointermove', handlePointerMove);
+        document.removeEventListener('pointerup', handlePointerUp);
+      };
+    }
+  }, [dragStart, handlePointerMove, handlePointerUp]);
+
+  // Get animation class based on item type
+  const getAnimationClass = () => {
+    if (item.type === 'decoration') return '';
+    const animation = ANIMAL_ANIMATIONS[item.id];
+    return animation ? `${animation.className} ${animation.duration}` : '';
+  };
+
+  return (
+    <div
+      ref={itemRef}
+      className={`absolute z-20 cursor-move select-none ${isSelected ? 'z-30' : ''}`}
+      style={{
+        left: `${item.x}px`,
+        top: `${item.y}px`,
+        transform: `translate(-50%, -50%) scale(${item.scale})`,
+      }}
+      onPointerDown={handlePointerDown}
+      onClick={onSelect}
+    >
+      {/* Selection Controls - Only show when item is selected */}
+      {isSelected && (
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex gap-2 z-40 bg-black/20 backdrop-blur-sm rounded-lg p-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onScaleUpdate(item.scale * 1.1); // UI BUTTON - ONLY SCALE, NO POSITION
+            }}
+            className="w-8 h-8 bg-cyan-500 hover:bg-cyan-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
+            title="Zoom In (+10%)"
+          >
+            ➕
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onScaleUpdate(item.scale * 0.9); // UI BUTTON - ONLY SCALE, NO POSITION
+            }}
+            className="w-8 h-8 bg-cyan-500 hover:bg-cyan-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
+            title="Zoom Out (-10%)"
+          >
+            ➖
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            className="w-8 h-8 bg-red-500 hover:bg-red-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
+            title="Remove to Warehouse"
+          >
+            ❌
+          </button>
+        </div>
+      )}
+
+      {/* Item Image with appropriate animation */}
+      <img
+        src={item.imageUrl}
+        alt={item.name}
+        className={`select-none transition-all duration-200 hover:brightness-110 pointer-events-none ${getAnimationClass()}`}
+        draggable={false}
+      />
+    </div>
+  );
+};
+
+// WarehouseItem Component - for items in warehouse
+const WarehouseItem: React.FC<{
+  item: AquariumStateItem;
+  onAddToAquarium: () => void;
+}> = ({ item, onAddToAquarium }) => {
+  return (
+    <div
+      className="group relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
+      onClick={onAddToAquarium}
+    >
+      <div className="aspect-square bg-white/60 rounded-lg p-3 mb-3 flex items-center justify-center">
+        <img
+          src={item.imageUrl}
+          alt={item.name}
+          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
+        />
+      </div>
+      <h4 className="text-sm font-semibold text-slate-700 text-center group-hover:text-slate-900 transition-colors">
+        {item.name}
+      </h4>
+      <div className="mt-2 w-full px-3 py-1 bg-slate-500 hover:bg-slate-400 text-white text-xs rounded-lg transition-colors text-center">
+        Click to Place
+      </div>
+    </div>
+  );
+};
 
 const Aquarium = () => {
   const navigate = useNavigate();
@@ -36,14 +236,8 @@ const Aquarium = () => {
 
   // UI state
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [isStorageOpen, setIsStorageOpen] = useState(false);
-
-  // Drag state
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
-  const [hasDragged, setHasDragged] = useState(false);
-  const [pendingSelection, setPendingSelection] = useState<string | null>(null);
+  const [isWarehouseOpen, setIsWarehouseOpen] = useState(false);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 
   const aquariumRef = useRef<HTMLDivElement>(null);
 
@@ -51,12 +245,12 @@ const Aquarium = () => {
 
   // Save state to localStorage
   const saveState = useCallback(() => {
-    localStorage.setItem("aquariumState", JSON.stringify(aquariumState));
+    localStorage.setItem("aquariumItems", JSON.stringify(aquariumState));
   }, [aquariumState]);
 
   // Load state from localStorage
   const loadState = useCallback(() => {
-    const saved = localStorage.getItem("aquariumState");
+    const saved = localStorage.getItem("aquariumItems");
     if (saved) {
       try {
         const parsedState = JSON.parse(saved);
@@ -70,7 +264,7 @@ const Aquarium = () => {
   }, []);
 
   // Add item to aquarium
-  const addItem = (item: AquariumStateItem, x: number = 400, y: number = 300) => {
+  const addItemToAquarium = (item: AquariumStateItem, x: number = 400, y: number = 300) => {
     const newItem: AquariumStateItem = {
       ...item,
       x,
@@ -79,7 +273,7 @@ const Aquarium = () => {
     };
 
     setAquariumState(prev => {
-      // Remove from storage if it exists there
+      // Remove from warehouse if it exists there
       const filtered = prev.filter(i => i.id !== item.id);
       return [...filtered, newItem];
     });
@@ -88,8 +282,8 @@ const Aquarium = () => {
     toast.success(`${newItem.name} added to aquarium!`);
   };
 
-  // Remove item from aquarium (send to storage)
-  const removeItem = (itemId: string) => {
+  // Remove item from aquarium (send to warehouse)
+  const removeItemFromAquarium = (itemId: string) => {
     setAquariumState(prev => prev.map(item =>
       item.id === itemId
         ? { ...item, inAquarium: false }
@@ -99,10 +293,10 @@ const Aquarium = () => {
     const item = aquariumState.find(i => i.id === itemId);
     saveState();
     setSelectedItemId(null);
-    toast.success(`${item?.name || 'Item'} sent to storage!`);
+    toast.success(`${item?.name || 'Item'} sent to warehouse!`);
   };
 
-  // Update item position
+  // Update item position (center-based)
   const updateItemPosition = (itemId: string, x: number, y: number) => {
     setAquariumState(prev => prev.map(item =>
       item.id === itemId
@@ -157,7 +351,7 @@ const Aquarium = () => {
           x: 400, // Center position initially
           y: 300,
           scale: 1,
-          inAquarium: false // New items start in inventory
+          inAquarium: false // New items start in warehouse
         };
       });
 
@@ -188,11 +382,11 @@ const Aquarium = () => {
           x: decoration.x || 400,
           y: decoration.y || 300,
           scale: 1,
-          inAquarium: false // New items start in inventory
+          inAquarium: false // New items start in warehouse
         };
       });
 
-      // Load saved positions from localStorage
+      // Load saved positions from localStorage (aquariumItems)
       const savedItems = localStorage.getItem("aquariumItems");
       let savedAquariumItems: AquariumStateItem[] = [];
       if (savedItems) {
@@ -203,14 +397,14 @@ const Aquarium = () => {
         }
       }
 
-      // Load inventory from localStorage
-      const savedInventory = localStorage.getItem("aquariumInventory");
-      let savedInventoryItems: AquariumStateItem[] = [];
-      if (savedInventory) {
+      // Load warehouse from localStorage
+      const savedWarehouse = localStorage.getItem("aquariumWarehouse");
+      let savedWarehouseItems: AquariumStateItem[] = [];
+      if (savedWarehouse) {
         try {
-          savedInventoryItems = JSON.parse(savedInventory);
+          savedWarehouseItems = JSON.parse(savedWarehouse);
         } catch (error) {
-          console.error("Error loading inventory items:", error);
+          console.error("Error loading warehouse items:", error);
         }
       }
 
@@ -221,116 +415,17 @@ const Aquarium = () => {
         return saved || item;
       });
 
-      // Filter items that are in aquarium vs inventory
+      // Filter items that are in aquarium vs warehouse
       const aquariumIds = mergedItems.map(item => item.id);
-      const inventoryOnlyItems = savedInventoryItems.filter(item => !aquariumIds.includes(item.id));
+      const warehouseOnlyItems = savedWarehouseItems.filter(item => !aquariumIds.includes(item.id));
 
-      setAquariumState([...mergedItems, ...inventoryOnlyItems]);
+      setAquariumState([...mergedItems, ...warehouseOnlyItems]);
     };
 
     if (!loading) {
       loadAquariumItems();
     }
   }, [creaturesInTank, decorationsInTank, loading, loadState]);
-
-  // Save items to localStorage
-  const saveAquariumItems = useCallback(() => {
-    localStorage.setItem("aquariumState", JSON.stringify(aquariumState));
-    toast.success("Aquarium layout saved!");
-  }, [aquariumState]);
-
-  // ================= DRAG & DROP SYSTEM =================
-  // DRAGGING: Only updates position (x, y) in px - NO scaling/rotation
-  // SCALING: Only through floating menu buttons (+ and -)
-  // CLICKING: Shows floating menu for resize/remove controls
-
-  const handleMouseDown = (e: React.MouseEvent, itemId: string) => {
-    e.preventDefault();
-
-    // Set drag start position and pending selection
-    setDragStartPos({ x: e.clientX, y: e.clientY });
-    setPendingSelection(itemId);
-    setHasDragged(false);
-
-    const item = aquariumState.find(i => i.id === itemId);
-    if (!item || !aquariumRef.current) return;
-
-    const rect = aquariumRef.current.getBoundingClientRect();
-    const itemRect = (e.target as HTMLElement).getBoundingClientRect();
-    const centerX = itemRect.left + itemRect.width / 2;
-    const centerY = itemRect.top + itemRect.height / 2;
-
-    setDragOffset({
-      x: e.clientX - centerX + rect.left,
-      y: e.clientY - centerY + rect.top
-    });
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!pendingSelection) return;
-
-    const deltaX = Math.abs(e.clientX - dragStartPos.x);
-    const deltaY = Math.abs(e.clientY - dragStartPos.y);
-    const threshold = 5; // 5px threshold
-
-    // If moved beyond threshold, start dragging
-    if ((deltaX > threshold || deltaY > threshold) && !hasDragged) {
-      setIsDragging(true);
-      setHasDragged(true);
-    }
-
-    // Handle actual dragging - POSITION ONLY (no scaling)
-    if (isDragging && aquariumRef.current) {
-      const rect = aquariumRef.current.getBoundingClientRect();
-      const x = e.clientX - dragOffset.x - rect.left;
-      const y = e.clientY - dragOffset.y - rect.top;
-
-      // Constrain to aquarium bounds (in px)
-      const constrainedX = Math.max(0, Math.min(rect.width - 100, x));
-      const constrainedY = Math.max(0, Math.min(rect.height - 100, y));
-
-      const selectedItem = aquariumState.find(item => item.id === pendingSelection);
-      if (selectedItem) {
-        updateItemPosition(selectedItem.id, constrainedX, constrainedY);
-      }
-    }
-  }, [pendingSelection, dragStartPos, hasDragged, isDragging, dragOffset, aquariumState]);
-
-  const handleMouseUp = useCallback(() => {
-    if (pendingSelection && !hasDragged) {
-      // It was a click, not a drag - show selection menu
-      setSelectedItemId(selectedItemId === pendingSelection ? null : pendingSelection);
-    }
-
-    // Reset drag states
-    setIsDragging(false);
-    setHasDragged(false);
-    setPendingSelection(null);
-  }, [pendingSelection, hasDragged, selectedItemId]);
-
-  // Handle resizing - ONLY through floating menu buttons (+ and -)
-  // No automatic scaling based on mouse movement or wheel events
-  const resizeItem = (itemId: string, delta: number) => {
-    setAquariumState(prev =>
-      prev.map(item =>
-        item.id === itemId
-          ? { ...item, scale: Math.max(0.5, Math.min(3, item.scale + delta)) }
-          : item
-      )
-    );
-  };
-
-  // Add event listeners
-  useEffect(() => {
-    if (isDragging || pendingSelection) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, pendingSelection, handleMouseMove, handleMouseUp]);
 
   // ================= AUTH & LOADING =================
 
@@ -358,12 +453,6 @@ const Aquarium = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("See you soon in Ocean Adventure!");
-    navigate("/");
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -379,13 +468,11 @@ const Aquarium = () => {
   return (
     <div className="min-h-screen relative">
       <OceanBackground />
-      {/* Dark overlay to make aquarium video stand out */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-[5]" />
       <Navbar />
       
       <div className="relative z-10 pt-24 pb-12 px-4">
-        <div className="container mx-auto max-w-6xl">
-          {/* Header */}
+        <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
             <div className="text-center md:text-left">
               <h1 className="text-4xl md:text-5xl font-bold mb-2 text-glow animate-float">
@@ -398,13 +485,22 @@ const Aquarium = () => {
             
             <div className="flex items-center gap-4">
               <StarCount count={stars} showAnimation />
+              
+              {/* Warehouse Button */}
+              <Button
+                onClick={() => setIsWarehouseOpen(true)}
+                className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-gradient-to-r from-orange-200/30 via-amber-300/35 to-yellow-300/40 hover:from-orange-100/40 hover:via-amber-200/45 hover:to-yellow-200/50 text-orange-50 border border-orange-200/40 backdrop-blur-sm h-12 px-6 text-lg font-semibold rounded-xl"
+              >
+                <Warehouse className="w-5 h-5 mr-2" />
+                Warehouse
+              </Button>
             </div>
           </div>
 
           {/* Main Aquarium Display */}
           <div
             ref={aquariumRef}
-            className="glass-effect rounded-3xl border border-white/20 p-8 md:p-12 min-h-[500px] relative overflow-hidden shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)] cursor-move select-none"
+            className="glass-effect rounded-3xl border border-white/20 p-8 md:p-12 min-h-[600px] relative overflow-hidden shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)]"
           >
             {/* Aquarium Background */}
             <video
@@ -421,65 +517,20 @@ const Aquarium = () => {
             <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-accent/20 blur-3xl animate-float z-10" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-accent/20 blur-3xl animate-float z-10" />
 
-            {/* Render Aquarium Items */}
+            {/* Render Aquarium Items using AquariumItem component */}
             {aquariumState
               .filter(item => item.inAquarium)
               .map((item) => (
-                <div
+                <AquariumItem
                   key={item.id}
-                  data-id={item.id}
-                  className="aquarium-item absolute z-20"
-                  style={{
-                    left: `${item.x}px`,
-                    top: `${item.y}px`,
-                    transform: `scale(${item.scale})`,
-                  }}
-                >
-                  {/* Selection Controls - Only show when item is selected */}
-                  {selectedItemId === item.id && (
-                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex gap-2 z-30">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateItemScale(item.id, item.scale + 0.1);
-                        }}
-                        className="w-8 h-8 bg-cyan-500 hover:bg-cyan-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
-                        title="Increase size"
-                      >
-                        ➕
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateItemScale(item.id, item.scale - 0.1);
-                        }}
-                        className="w-8 h-8 bg-cyan-500 hover:bg-cyan-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
-                        title="Decrease size"
-                      >
-                        ➖
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeItem(item.id);
-                        }}
-                        className="w-8 h-8 bg-red-500 hover:bg-red-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
-                        title="Remove to storage"
-                      >
-                        ❌
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Item Image */}
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="cursor-move select-none transition-all duration-200 hover:brightness-110"
-                    onMouseDown={(e) => handleMouseDown(e, item.id)}
-                    draggable={false}
-                  />
-                </div>
+                  item={item}
+                  isSelected={selectedItemId === item.id}
+                  onSelect={() => setSelectedItemId(selectedItemId === item.id ? null : item.id)}
+                  onPositionUpdate={(x, y) => updateItemPosition(item.id, x, y)}
+                  onScaleUpdate={(scale) => updateItemScale(item.id, scale)}
+                  onRemove={() => removeItemFromAquarium(item.id)}
+                  isDragging={draggedItemId === item.id}
+                />
               ))}
 
             {/* Bubble Maker Effect */}
@@ -504,12 +555,6 @@ const Aquarium = () => {
           {/* Quick Actions */}
           <div className="mt-8 grid md:grid-cols-4 gap-4">
             <Button
-              onClick={() => setIsStorageOpen(true)}
-              className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-gradient-to-r from-purple-200/30 via-indigo-300/35 to-blue-300/40 hover:from-purple-100/40 hover:via-indigo-200/45 hover:to-blue-200/50 text-purple-50 border border-purple-200/40 backdrop-blur-sm h-20 text-lg font-semibold rounded-xl"
-            >
-              📦 Storage
-            </Button>
-            <Button
               onClick={() => navigate("/shop")}
               className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-gradient-to-r from-violet-200/30 via-purple-300/35 to-fuchsia-300/40 hover:from-violet-100/40 hover:via-purple-200/45 hover:to-fuchsia-200/50 text-violet-50 border border-violet-200/40 backdrop-blur-sm h-20 text-lg font-semibold rounded-xl"
             >
@@ -527,59 +572,52 @@ const Aquarium = () => {
             >
               🎮 Play Games
             </Button>
+            <Button
+              onClick={() => navigate("/")}
+              className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-gradient-to-r from-slate-200/30 via-gray-300/35 to-zinc-300/40 hover:from-slate-100/40 hover:via-gray-200/45 hover:to-zinc-200/50 text-slate-50 border border-slate-200/40 backdrop-blur-sm h-20 text-lg font-semibold rounded-xl"
+            >
+              🏠 Home
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Storage Modal */}
-      {isStorageOpen && (
+      {/* Warehouse Modal */}
+      {isWarehouseOpen && (
         <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center animate-fade-in">
-          <div className="relative w-[90%] max-w-4xl max-h-[80vh] bg-gradient-to-br from-white/95 to-white/85 backdrop-blur-xl rounded-3xl border border-white/50 shadow-[0_30px_80px_rgba(0,0,0,0.4)] overflow-hidden animate-scale-in">
-            {/* Header */}
+          <div className="relative w-[90%] max-w-5xl max-h-[85vh] bg-gradient-to-br from-white/95 to-white/85 backdrop-blur-xl rounded-3xl border border-white/50 shadow-[0_30px_80px_rgba(0,0,0,0.4)] overflow-hidden animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b border-white/30">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800 drop-shadow-sm">📦 Storage</h2>
+                <h2 className="text-2xl font-bold text-slate-800 drop-shadow-sm flex items-center gap-2">
+                  <Warehouse className="w-6 h-6" />
+                  Warehouse
+                </h2>
                 <p className="text-slate-600 mt-1">Click items to place them in your aquarium</p>
               </div>
               <button
-                onClick={() => setIsStorageOpen(false)}
+                onClick={() => setIsWarehouseOpen(false)}
                 className="w-10 h-10 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition-all duration-200 hover:scale-110"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-6 max-h-[calc(80vh-120px)] overflow-y-auto">
+            <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto">
               {/* Fish Section */}
               {aquariumState.filter(item => item.type === 'fish' && !item.inAquarium).length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-xl font-bold text-cyan-700 mb-4 flex items-center gap-2">
                     🐠 Fish
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {aquariumState
                       .filter(item => item.type === 'fish' && !item.inAquarium)
                       .map((item) => (
-                        <div
+                        <WarehouseItem
                           key={item.id}
-                          className="group relative bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl p-4 border border-cyan-200/50 hover:border-cyan-300 transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
-                          onClick={() => addItem(item)}
-                        >
-                          <div className="aspect-square bg-white/60 rounded-lg p-3 mb-3 flex items-center justify-center">
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
-                            />
-                          </div>
-                          <h4 className="text-sm font-semibold text-slate-700 text-center group-hover:text-cyan-700 transition-colors">
-                            {item.name}
-                          </h4>
-                          <button className="mt-2 w-full px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-white text-xs rounded-lg transition-colors">
-                            Place
-                          </button>
-                        </div>
+                          item={item}
+                          onAddToAquarium={() => addItemToAquarium(item)}
+                        />
                       ))}
                   </div>
                 </div>
@@ -591,29 +629,15 @@ const Aquarium = () => {
                   <h3 className="text-xl font-bold text-emerald-700 mb-4 flex items-center gap-2">
                     🪸 Decorations
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {aquariumState
                       .filter(item => item.type === 'decoration' && !item.inAquarium)
                       .map((item) => (
-                        <div
+                        <WarehouseItem
                           key={item.id}
-                          className="group relative bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-200/50 hover:border-emerald-300 transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
-                          onClick={() => addItem(item)}
-                        >
-                          <div className="aspect-square bg-white/60 rounded-lg p-3 mb-3 flex items-center justify-center">
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
-                            />
-                          </div>
-                          <h4 className="text-sm font-semibold text-slate-700 text-center group-hover:text-emerald-700 transition-colors">
-                            {item.name}
-                          </h4>
-                          <button className="mt-2 w-full px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs rounded-lg transition-colors">
-                            Place
-                          </button>
-                        </div>
+                          item={item}
+                          onAddToAquarium={() => addItemToAquarium(item)}
+                        />
                       ))}
                   </div>
                 </div>
@@ -621,10 +645,10 @@ const Aquarium = () => {
 
               {/* Empty state */}
               {aquariumState.filter(item => !item.inAquarium).length === 0 && (
-                <div className="text-center py-12">
-                  <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-slate-600 mb-2">Storage is empty</h3>
-                  <p className="text-slate-500">Remove items from your aquarium to store them here!</p>
+                <div className="text-center py-16">
+                  <Package className="w-20 h-20 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-2xl font-semibold text-slate-600 mb-2">Warehouse is empty</h3>
+                  <p className="text-slate-500">Remove items from your aquarium to see them here!</p>
                 </div>
               )}
             </div>
