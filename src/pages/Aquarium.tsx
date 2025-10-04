@@ -476,7 +476,7 @@ const Aquarium = () => {
           <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
             <div className="text-center md:text-left">
               <h1 className="text-4xl md:text-5xl font-bold mb-2 text-glow animate-float">
-                Your Personal Aquarium
+                Your Aquarium
               </h1>
               <p className="text-lg text-white/80">
                 Welcome back, Ocean Explorer! 🐠

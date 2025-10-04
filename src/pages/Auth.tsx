@@ -87,7 +87,7 @@ const Auth = () => {
           {/* Background GIF above Welcome text */}
           <div className="relative mb-6 overflow-hidden rounded-2xl">
             <img
-              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BRIEF%20GIAO%20DIE%CC%A3%CC%82N.gif?updatedAt=1759328372189"
+              src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/ch%E1%BB%AF%20c%E1%BB%A7a%20b%C3%ACa%20n%C3%A8?updatedAt=1759531155685"
               alt="Ocean Adventure Background"
               className="w-full h-40 md:h-48 object-cover pointer-events-none select-none"
             />
