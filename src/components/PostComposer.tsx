@@ -123,7 +123,7 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
   if (!currentUserProfile) {
     return (
       <div className="glass-effect rounded-3xl border border-white/20 p-8 text-center">
-        <p className="text-white/60 text-lg">Please sign in to join the ocean community</p>
+        <p className="ocean-dark-text/60 text-lg">Please sign in to join the ocean community</p>
       </div>
     );
   }
@@ -144,7 +144,7 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[100px] bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none focus:border-primary/50 focus:ring-primary/20"
+            className="min-h-[100px] bg-white/10 border-white/20 ocean-dark-text placeholder:ocean-dark-text/50 resize-none focus:border-primary/50 focus:ring-primary/20"
             disabled={isSubmitting}
           />
 
@@ -187,14 +187,14 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSubmitting}
-                className="border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
+                className="border-white/20 ocean-dark-text/80 hover:bg-white/10 hover:ocean-dark-text"
               >
                 <Image className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Add Image</span>
                 <span className="sm:hidden">Image</span>
               </Button>
 
-              <span className="text-sm text-white/60 hidden sm:inline">
+              <span className="text-sm ocean-dark-text/60 hidden sm:inline">
                 Press Ctrl+Enter to post
               </span>
             </div>
@@ -202,7 +202,7 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || (!text.trim() && !imageFile)}
-              className="bg-primary hover:bg-primary/90 text-white w-full sm:w-auto"
+              className="bg-primary hover:bg-primary/90 ocean-dark-text w-full sm:w-auto"
             >
               {isSubmitting ? (
                 <>

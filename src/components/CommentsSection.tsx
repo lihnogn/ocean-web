@@ -105,7 +105,7 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
   if (!currentUserProfile) {
     return (
       <div className="text-center py-4">
-        <p className="text-white/60">Please sign in to view and add comments</p>
+        <p className="ocean-dark-text/60">Please sign in to view and add comments</p>
       </div>
     );
   }
@@ -120,8 +120,8 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
           </div>
         ) : comments.length === 0 ? (
           <div className="text-center py-4">
-            <MessageCircle className="w-8 h-8 text-white/40 mx-auto mb-2" />
-            <p className="text-white/60">No comments yet. Be the first to comment!</p>
+            <MessageCircle className="w-8 h-8 ocean-dark-text/40 mx-auto mb-2" />
+            <p className="ocean-dark-text/60">No comments yet. Be the first to comment!</p>
           </div>
         ) : (
           comments.map((comment) => (
@@ -135,14 +135,14 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-white text-sm">
+                  <span className="font-medium ocean-dark-text text-sm">
                     {comment.user_profile?.username}
                   </span>
-                  <span className="text-xs text-white/50">
+                  <span className="text-xs ocean-dark-text/50">
                     {formatTimestamp(comment.created_at)}
                   </span>
                 </div>
-                <p className="text-white/90 text-sm leading-relaxed">
+                <p className="ocean-dark-text/90 text-sm leading-relaxed">
                   {comment.text}
                 </p>
               </div>
@@ -166,7 +166,7 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[60px] bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none focus:border-primary/50 focus:ring-primary/20"
+            className="min-h-[60px] bg-white/10 border-white/20 ocean-dark-text placeholder:ocean-dark-text/50 resize-none focus:border-primary/50 focus:ring-primary/20"
             disabled={isSubmitting}
           />
         </div>
@@ -175,7 +175,7 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
           onClick={handleSubmitComment}
           disabled={isSubmitting || !newComment.trim()}
           size="sm"
-          className="bg-primary hover:bg-primary/90 text-white h-10 px-4"
+          className="bg-primary hover:bg-primary/90 ocean-dark-text h-10 px-4"
         >
           {isSubmitting ? (
             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />

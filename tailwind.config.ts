@@ -127,5 +127,16 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function({ addUtilities }) {
+      addUtilities({
+        '.glass-effect': {
+          'background': 'rgba(255, 255, 255, 0.5)',
+          'backdrop-filter': 'blur(10px)',
+          '-webkit-backdrop-filter': 'blur(10px)',
+        },
+      });
+    },
+  ],
 } satisfies Config;

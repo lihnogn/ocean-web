@@ -45,7 +45,7 @@ const Social = () => {
           <div className="container mx-auto max-w-6xl">
             <div className="glass-effect rounded-3xl border border-white/20 p-12 text-center">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-white/60">Loading ocean community...</p>
+              <p className="ocean-dark-text/60">Loading ocean community...</p>
             </div>
           </div>
         </div>
@@ -63,10 +63,10 @@ const Social = () => {
           <div className="container mx-auto max-w-6xl">
             <div className="glass-effect rounded-3xl border border-white/20 p-12 text-center">
               <p className="text-xl text-red-400 mb-4">Something went wrong</p>
-              <p className="text-white/60 mb-6">{error}</p>
+              <p className="ocean-dark-text/60 mb-6">{error}</p>
               <button
                 onClick={refreshFeed}
-                className="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg transition-colors"
+                className="bg-primary hover:bg-primary/90 ocean-dark-text px-6 py-2 rounded-lg transition-colors"
               >
                 Try Again
               </button>
@@ -92,7 +92,7 @@ const Social = () => {
                 <h1 className="text-4xl md:text-5xl font-bold mb-4 text-glow animate-float">
                   Ocean Community
                 </h1>
-                <p className="text-xl text-white/80 max-w-2xl mx-auto">
+                <p className="text-xl ocean-dark-text/80 max-w-2xl mx-auto">
                   Share your ocean adventures, connect with fellow explorers, and spread some star magic! 🌊
                 </p>
               </div>
@@ -102,7 +102,7 @@ const Social = () => {
 
               {/* Feed Header */}
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">Recent Posts</h2>
+                <h2 className="text-2xl font-bold ocean-dark-text">Recent Posts</h2>
                 <button
                   onClick={refreshFeed}
                   className="text-primary hover:text-primary/80 transition-colors"
@@ -116,11 +116,11 @@ const Social = () => {
                 {posts.length === 0 ? (
                   <div className="glass-effect rounded-3xl border border-white/20 p-12 text-center">
                     <div className="text-6xl mb-4">🌊</div>
-                    <h3 className="text-xl font-semibold text-white mb-2">No posts yet</h3>
-                    <p className="text-white/60 mb-6">
+                    <h3 className="text-xl font-semibold ocean-dark-text mb-2">No posts yet</h3>
+                    <p className="ocean-dark-text/60 mb-6">
                       Be the first to share something with the ocean community!
                     </p>
-                    <p className="text-sm text-white/40">
+                    <p className="text-sm ocean-dark-text/40">
                       Posts will appear here as you and others share your ocean adventures.
                     </p>
                   </div>
@@ -139,12 +139,12 @@ const Social = () => {
                 <div className="glass-effect rounded-3xl border border-white/20 p-6 mb-6">
                   <div className="flex items-center gap-3 mb-3">
                     <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold text-white">Your Stars</span>
+                    <span className="font-semibold ocean-dark-text">Your Stars</span>
                   </div>
                   <div className="text-2xl font-bold text-primary mb-2">
                     {currentUserProfile.stars}
                   </div>
-                  <p className="text-sm text-white/60">
+                  <p className="text-sm ocean-dark-text/60">
                     Gift stars to show appreciation for great posts!
                   </p>
                 </div>

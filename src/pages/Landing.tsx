@@ -24,17 +24,17 @@ const Landing = () => {
           alt="Ocean Adventure"
           className="mx-auto mb-6 w-full max-w-[80%] h-auto"
         />
-        <p className="text-2xl md:text-3xl mb-4 text-white/90 animate-float-slow">
+        <p className="text-2xl md:text-3xl mb-4 ocean-dark-text/90 animate-float-slow">
           Explore Your Mysterious Ocean
         </p>
-        <p className="text-lg md:text-xl mb-12 text-white/80 max-w-2xl mx-auto">
+        <p className="text-lg md:text-xl mb-12 ocean-dark-text/80 max-w-2xl mx-auto">
           Dive into an immersive underwater world filled with games, collectibles, and your very own personal aquarium
         </p>
         
         <Button
           onClick={() => navigate("/auth")}
           size="lg"
-          className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(168,85,247,0.8)] bg-gradient-to-r from-cyan-200/30 via-blue-300/35 to-purple-300/40 hover:from-cyan-100/40 hover:via-blue-200/45 hover:to-purple-200/50 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm px-8 py-6 text-xl font-semibold rounded-2xl"
+          className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(255,193,7,0.8)] bg-gradient-to-r from-yellow-200/10 via-yellow-300/12 to-yellow-400/15 hover:from-yellow-100/20 hover:via-yellow-200/25 hover:to-yellow-300/30 ocean-dark-text border border-yellow-200/20 backdrop-blur-sm px-8 py-6 text-xl font-semibold rounded-2xl"
         >
           <Sparkles className="w-6 h-6 mr-2 animate-sparkle" />
           Start Journey

@@ -99,27 +99,27 @@ const Auth = () => {
 
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white/90">Email</Label>
+              <Label htmlFor="email" className="ocean-dark-text/90">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="glass-effect border-white/20 focus:border-accent focus:ring-accent text-white placeholder:text-white/50"
+                className="glass-effect border-white/20 focus:border-accent focus:ring-accent ocean-dark-text placeholder:ocean-dark-text/50"
                 placeholder="your@email.com"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white/90">Password</Label>
+              <Label htmlFor="password" className="ocean-dark-text/90">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="glass-effect border-white/20 focus:border-accent focus:ring-accent text-white placeholder:text-white/50"
+                className="glass-effect border-white/20 focus:border-accent focus:ring-accent ocean-dark-text placeholder:ocean-dark-text/50"
                 placeholder="••••••••"
               />
             </div>
@@ -143,7 +143,7 @@ const Auth = () => {
           </div>
 
           {!isLogin && (
-            <p className="mt-4 text-sm text-white/70 text-center">
+            <p className="mt-4 text-sm ocean-dark-text/70 text-center">
               🌟 Daily login rewards: Earn 1 Shiny Star every day!
             </p>
           )}

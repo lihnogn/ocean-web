@@ -24,17 +24,17 @@ export const UserSuggestions = ({ className }: UserSuggestionsProps) => {
       <div className="flex-1 min-w-0">
         <Link
           to={`/profile/${user.user_id}`}
-          className="font-medium text-white hover:text-primary transition-colors text-sm block truncate"
+          className="font-medium ocean-dark-text hover:text-primary transition-colors text-sm block truncate"
         >
           {user.username}
         </Link>
         <div className="flex items-center gap-2 mt-1">
           <div className="flex items-center gap-1">
             <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-            <span className="text-xs text-white/60">{user.stars}</span>
+            <span className="text-xs ocean-dark-text/60">{user.stars}</span>
           </div>
           {user.posts_count && (
-            <span className="text-xs text-white/60">{user.posts_count} posts</span>
+            <span className="text-xs ocean-dark-text/60">{user.posts_count} posts</span>
           )}
         </div>
       </div>
@@ -55,7 +55,7 @@ export const UserSuggestions = ({ className }: UserSuggestionsProps) => {
       <div className="glass-effect rounded-3xl border border-white/20 p-4 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-white">Trending Users</h3>
+          <h3 className="font-semibold ocean-dark-text">Trending Users</h3>
         </div>
 
         <div className="space-y-3">
@@ -69,7 +69,7 @@ export const UserSuggestions = ({ className }: UserSuggestionsProps) => {
       <div className="glass-effect rounded-3xl border border-white/20 p-4">
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-white">Suggested for You</h3>
+          <h3 className="font-semibold ocean-dark-text">Suggested for You</h3>
         </div>
 
         <div className="space-y-3">
@@ -100,14 +100,14 @@ export const UserSuggestions = ({ className }: UserSuggestionsProps) => {
             <div className="flex-1">
               <Link
                 to={`/profile/${currentUserProfile.user_id}`}
-                className="font-semibold text-white hover:text-primary transition-colors"
+                className="font-semibold ocean-dark-text hover:text-primary transition-colors"
               >
                 {currentUserProfile.username}
               </Link>
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm text-white/60">{currentUserProfile.stars}</span>
+                  <span className="text-sm ocean-dark-text/60">{currentUserProfile.stars}</span>
                 </div>
               </div>
             </div>
@@ -116,15 +116,15 @@ export const UserSuggestions = ({ className }: UserSuggestionsProps) => {
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-white/5 rounded-lg p-2">
               <div className="text-lg font-bold text-primary">{currentUserProfile.posts_count || 0}</div>
-              <div className="text-xs text-white/60">Posts</div>
+              <div className="text-xs ocean-dark-text/60">Posts</div>
             </div>
             <div className="bg-white/5 rounded-lg p-2">
               <div className="text-lg font-bold text-primary">{currentUserProfile.followers_count || 0}</div>
-              <div className="text-xs text-white/60">Followers</div>
+              <div className="text-xs ocean-dark-text/60">Followers</div>
             </div>
             <div className="bg-white/5 rounded-lg p-2">
               <div className="text-lg font-bold text-primary">{currentUserProfile.following_count || 0}</div>
-              <div className="text-xs text-white/60">Following</div>
+              <div className="text-xs ocean-dark-text/60">Following</div>
             </div>
           </div>
         </div>

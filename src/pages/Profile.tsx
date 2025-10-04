@@ -221,7 +221,7 @@ const Profile = () => {
           <div className="container mx-auto max-w-6xl">
             <div className="glass-effect rounded-3xl border border-white/20 p-12 text-center">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-white/60">Loading profile...</p>
+              <p className="ocean-dark-text/60">Loading profile...</p>
             </div>
           </div>
         </div>
@@ -237,7 +237,7 @@ const Profile = () => {
         <div className="relative z-10 pt-24 pb-12 px-4">
           <div className="container mx-auto max-w-6xl">
             <div className="glass-effect rounded-3xl border border-white/20 p-12 text-center">
-              <p className="text-2xl text-white/60 mb-4">User not found</p>
+              <p className="text-2xl ocean-dark-text/60 mb-4">User not found</p>
               <Link to="/social">
                 <Button className="bg-primary hover:bg-primary/90">
                   Back to Social Feed
@@ -287,7 +287,7 @@ const Profile = () => {
                     </DialogTrigger>
                     <DialogContent className="glass-effect border border-white/20 max-w-md mx-4">
                       <DialogHeader>
-                        <DialogTitle className="text-white">Edit Profile</DialogTitle>
+                        <DialogTitle className="ocean-dark-text">Edit Profile</DialogTitle>
                       </DialogHeader>
 
                       <div className="space-y-4 sm:space-y-6">
@@ -307,34 +307,34 @@ const Profile = () => {
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
                             <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-primary rounded-full flex items-center justify-center">
-                              <Camera className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
+                              <Camera className="w-2 h-2 sm:w-3 sm:h-3 ocean-dark-text" />
                             </div>
                           </div>
-                          <p className="text-sm text-white/60 text-center">
+                          <p className="text-sm ocean-dark-text/60 text-center">
                             Click avatar to upload new photo
                           </p>
                         </div>
 
                         {/* Username */}
                         <div className="space-y-2">
-                          <Label htmlFor="username" className="text-white">Username</Label>
+                          <Label htmlFor="username" className="ocean-dark-text">Username</Label>
                           <Input
                             id="username"
                             value={editForm.username}
                             onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            className="bg-white/10 border-white/20 ocean-dark-text placeholder:ocean-dark-text/50"
                             placeholder="Enter your username"
                           />
                         </div>
 
                         {/* Bio */}
                         <div className="space-y-2">
-                          <Label htmlFor="bio" className="text-white">Bio</Label>
+                          <Label htmlFor="bio" className="ocean-dark-text">Bio</Label>
                           <Textarea
                             id="bio"
                             value={editForm.bio}
                             onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[80px] sm:min-h-[100px]"
+                            className="bg-white/10 border-white/20 ocean-dark-text placeholder:ocean-dark-text/50 min-h-[80px] sm:min-h-[100px]"
                             placeholder="Tell us about yourself..."
                           />
                         </div>
@@ -344,7 +344,7 @@ const Profile = () => {
                           <Button
                             variant="outline"
                             onClick={() => setIsEditModalOpen(false)}
-                            className="border-white/20 text-white/80 hover:bg-white/10 w-full sm:w-auto"
+                            className="border-white/20 ocean-dark-text/80 hover:bg-white/10 w-full sm:w-auto"
                           >
                             <X className="w-4 h-4 mr-2" />
                             Cancel
@@ -375,7 +375,7 @@ const Profile = () => {
 
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold ocean-dark-text">
                     {userProfile.username}
                   </h1>
 
@@ -384,7 +384,7 @@ const Profile = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => setIsEditModalOpen(true)}
-                      className="border-white/20 text-white/80 hover:bg-white/10 w-fit mx-auto sm:mx-0"
+                      className="border-white/20 ocean-dark-text/80 hover:bg-white/10 w-fit mx-auto sm:mx-0"
                     >
                       <Edit className="w-4 h-4 mr-2" />
                       Edit Profile
@@ -393,10 +393,10 @@ const Profile = () => {
                 </div>
 
                 {userProfile.bio && (
-                  <p className="text-white/80 mb-4 leading-relaxed max-w-2xl mx-auto sm:mx-0">{userProfile.bio}</p>
+                  <p className="ocean-dark-text/80 mb-4 leading-relaxed max-w-2xl mx-auto sm:mx-0">{userProfile.bio}</p>
                 )}
 
-                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 text-sm text-white/60 justify-center sm:justify-start">
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 text-sm ocean-dark-text/60 justify-center sm:justify-start">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
                     <span>Joined {formatJoinDate(userProfile.created_at)}</span>
@@ -414,19 +414,19 @@ const Profile = () => {
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/20">
               <div className="text-center p-2 sm:p-4 rounded-lg bg-white/5">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary mb-1">{userPosts.length}</div>
-                <div className="text-xs sm:text-sm text-white/60">Posts</div>
+                <div className="text-xs sm:text-sm ocean-dark-text/60">Posts</div>
               </div>
               <div className="text-center p-2 sm:p-4 rounded-lg bg-white/5">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary mb-1">
                   {userProfile.followers_count || 0}
                 </div>
-                <div className="text-xs sm:text-sm text-white/60">Followers</div>
+                <div className="text-xs sm:text-sm ocean-dark-text/60">Followers</div>
               </div>
               <div className="text-center p-2 sm:p-4 rounded-lg bg-white/5">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary mb-1">
                   {userProfile.following_count || 0}
                 </div>
-                <div className="text-xs sm:text-sm text-white/60">Following</div>
+                <div className="text-xs sm:text-sm ocean-dark-text/60">Following</div>
               </div>
             </div>
           </div>
@@ -434,10 +434,10 @@ const Profile = () => {
           {/* Profile Content */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/20 mb-4 sm:mb-6">
-              <TabsTrigger value="posts" className="data-[state=active]:bg-primary data-[state=active]:text-white text-sm sm:text-base">
+              <TabsTrigger value="posts" className="data-[state=active]:bg-primary data-[state=active]:ocean-dark-text text-sm sm:text-base">
                 Posts ({userPosts.length})
               </TabsTrigger>
-              <TabsTrigger value="about" className="data-[state=active]:bg-primary data-[state=active]:text-white text-sm sm:text-base">
+              <TabsTrigger value="about" className="data-[state=active]:bg-primary data-[state=active]:ocean-dark-text text-sm sm:text-base">
                 About
               </TabsTrigger>
             </TabsList>
@@ -446,8 +446,8 @@ const Profile = () => {
               {userPosts.length === 0 ? (
                 <div className="glass-effect rounded-3xl border border-white/20 p-8 sm:p-12 text-center">
                   <div className="text-4xl sm:text-6xl mb-4">🌊</div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No posts yet</h3>
-                  <p className="text-white/60 mb-4 sm:mb-6 text-sm sm:text-base">
+                  <h3 className="text-lg sm:text-xl font-semibold ocean-dark-text mb-2">No posts yet</h3>
+                  <p className="ocean-dark-text/60 mb-4 sm:mb-6 text-sm sm:text-base">
                     {isOwnProfile ? 'Share your first post with the ocean community!' : `${userProfile.username} hasn't posted anything yet.`}
                   </p>
                   {isOwnProfile && (
@@ -467,17 +467,17 @@ const Profile = () => {
 
             <TabsContent value="about">
               <div className="glass-effect rounded-3xl border border-white/20 p-4 sm:p-8">
-                <h3 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">About {userProfile.username}</h3>
+                <h3 className="text-xl sm:text-2xl font-semibold ocean-dark-text mb-4 sm:mb-6">About {userProfile.username}</h3>
 
                 {userProfile.bio ? (
                   <div className="mb-6 sm:mb-8">
                     <h4 className="text-base sm:text-lg font-medium text-primary mb-2">Bio</h4>
-                    <p className="text-white/80 leading-relaxed text-sm sm:text-base">{userProfile.bio}</p>
+                    <p className="ocean-dark-text/80 leading-relaxed text-sm sm:text-base">{userProfile.bio}</p>
                   </div>
                 ) : (
                   <div className="mb-6 sm:mb-8">
                     <h4 className="text-base sm:text-lg font-medium text-primary mb-2">Bio</h4>
-                    <p className="text-white/60 text-sm sm:text-base">
+                    <p className="ocean-dark-text/60 text-sm sm:text-base">
                       {isOwnProfile ? 'Tell the community about yourself!' : 'No bio available.'}
                     </p>
                   </div>
@@ -489,14 +489,14 @@ const Profile = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
                         <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
-                        <span className="text-white/80 text-sm sm:text-base">
+                        <span className="ocean-dark-text/80 text-sm sm:text-base">
                           Member since {formatJoinDate(userProfile.created_at)}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
                         <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 flex-shrink-0" />
-                        <span className="text-white/80 text-sm sm:text-base">
+                        <span className="ocean-dark-text/80 text-sm sm:text-base">
                           ⭐ {userProfile.stars} stars earned from the community
                         </span>
                       </div>
@@ -506,7 +506,7 @@ const Profile = () => {
                           <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                             <span className="text-xs font-bold text-primary">P</span>
                           </div>
-                          <span className="text-white/80 text-sm sm:text-base">
+                          <span className="ocean-dark-text/80 text-sm sm:text-base">
                             {userPosts.length} post{userPosts.length !== 1 ? 's' : ''} shared
                           </span>
                         </div>
@@ -516,7 +516,7 @@ const Profile = () => {
                         <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-cyan-400/20 flex items-center justify-center flex-shrink-0">
                           <span className="text-xs font-bold text-cyan-400">F</span>
                         </div>
-                        <span className="text-white/80 text-sm sm:text-base">
+                        <span className="ocean-dark-text/80 text-sm sm:text-base">
                           {userProfile.followers_count || 0} followers
                         </span>
                       </div>
@@ -529,7 +529,7 @@ const Profile = () => {
                     <Button
                       variant="outline"
                       onClick={() => setIsEditModalOpen(true)}
-                      className="border-white/20 text-white/80 hover:bg-white/10 w-full sm:w-auto"
+                      className="border-white/20 ocean-dark-text/80 hover:bg-white/10 w-full sm:w-auto"
                     >
                       <Settings className="w-4 h-4 mr-2" />
                       Edit Profile

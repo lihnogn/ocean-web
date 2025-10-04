@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Package, X, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { User, Session } from "@supabase/supabase-js";
+import { TablesInsert } from "@/integrations/supabase/types";
 import avatarFish from "@/assets/avatar-fish.png";
 
 interface Position {
@@ -28,48 +29,24 @@ interface AquariumStateItem {
   name: string;
 }
 
-// Animation configurations for different animals
+interface SwimmingState {
+  currentX: number;
+  currentY: number;
+  velocityX: number;
+  baseSpeed: number;
+  currentSpeed: number;
+  direction: 'left' | 'right'; // Patrol direction
+  isFlipped: boolean; // Horizontal flip state
+  patrolY: number; // Fixed Y position for patrol
+  lastSpeedChange: number;
+  lastBobChange: number;
+  bobOffset: number; // Small up/down movement
+}
+
+// Animation configurations for different animals - gentle wave-like drifting
 const ANIMAL_ANIMATIONS: Record<string, { className: string; duration: string; transform: string }> = {
-  'octopus': { 
-    className: 'animate-float-slow', 
-    duration: 'duration-[6s]', 
-    transform: 'translate-y-[-10px] translate-y-[10px]' 
-  },
-  'jellyfish': { 
-    className: 'animate-drift', 
-    duration: 'duration-[8s]', 
-    transform: 'translate-x-[-15px] translate-x-[15px]' 
-  },
-  'seahorse': { 
-    className: 'animate-sway', 
-    duration: 'duration-[5s]', 
-    transform: 'translate-y-[-5px] translate-y-[5px]' 
-  },
-  'clownfish': { 
-    className: 'animate-swim', 
-    duration: 'duration-[6s]', 
-    transform: 'translate-x-[-20px] translate-x-[20px]' 
-  },
-  'butterflyfish': { 
-    className: 'animate-swim', 
-    duration: 'duration-[7s]', 
-    transform: 'translate-x-[-20px] translate-x-[20px]' 
-  },
-  'blue-yellow-fish': { 
-    className: 'animate-swim', 
-    duration: 'duration-[6s]', 
-    transform: 'translate-x-[-20px] translate-x-[20px]' 
-  },
-  'blue-fish': { 
-    className: 'animate-swim', 
-    duration: 'duration-[8s]', 
-    transform: 'translate-x-[-20px] translate-x-[20px]' 
-  },
-  'fish-trio': { 
-    className: 'animate-swim', 
-    duration: 'duration-[7s]', 
-    transform: 'translate-x-[-20px] translate-x-[20px]' 
-  },
+  // Fish now use JavaScript swimming system instead of CSS animations
+  // Decorations can still use simple animations if needed
 };
 
 // AquariumItem Component - handles individual item rendering and interaction
@@ -83,9 +60,15 @@ const AquariumItem: React.FC<{
   isDragging?: boolean;
 }> = ({ item, isSelected, onSelect, onPositionUpdate, onScaleUpdate, onRemove, isDragging = false }) => {
   const itemRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef<number>();
   const [isDragActive, setIsDragActive] = useState(false);
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
   const [originalPosition, setOriginalPosition] = useState<Position>({ x: 0, y: 0 });
+
+  // Swimming state for fish
+  const swimmingRef = useRef<SwimmingState | null>(null);
+  const [swimmingPosition, setSwimmingPosition] = useState<Position>({ x: item.x, y: item.y });
+  const [isFlipped, setIsFlipped] = useState(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     // Chỉ xử lý chuột trái (button 0)
@@ -95,6 +78,12 @@ const AquariumItem: React.FC<{
     setIsDragActive(true);
     setDragStart({ x: e.clientX, y: e.clientY });
     setOriginalPosition({ x: item.x, y: item.y });
+
+    // Stop swimming when dragging starts
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = undefined;
+    }
   }, [item.x, item.y]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -114,12 +103,18 @@ const AquariumItem: React.FC<{
 
       // Chỉ cập nhật vị trí, KHÔNG ảnh hưởng scale
       onPositionUpdate(constrainedX, constrainedY);
+      setSwimmingPosition({ x: constrainedX, y: constrainedY });
     }
   }, [isDragActive, dragStart, originalPosition, onPositionUpdate]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragActive(false);
-  }, []);
+
+    // Resume swimming after drag ends
+    if (item.type === 'fish') {
+      initializeSwimming();
+    }
+  }, [item.type]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -129,6 +124,95 @@ const AquariumItem: React.FC<{
 
     onScaleUpdate(newScale);
   }, [item.scale, onScaleUpdate]);
+
+  // Initialize swimming state for fish
+  const initializeSwimming = useCallback(() => {
+    if (item.type !== 'fish') return;
+
+    // Random base speed between 0.5-1.5 pixels per frame
+    const baseSpeed = 0.5 + Math.random() * 1.0;
+
+    swimmingRef.current = {
+      currentX: item.x,
+      currentY: item.y,
+      velocityX: baseSpeed,
+      baseSpeed: baseSpeed,
+      currentSpeed: baseSpeed,
+      direction: Math.random() > 0.5 ? 'left' : 'right',
+      isFlipped: false,
+      patrolY: item.y,
+      lastSpeedChange: Date.now(),
+      lastBobChange: Date.now(),
+      bobOffset: 0
+    };
+
+    setSwimmingPosition({ x: item.x, y: item.y });
+    setIsFlipped(false);
+  }, [item.x, item.y, item.type]);
+
+  // Swimming animation loop - horizontal patrol pattern
+  const swim = useCallback(() => {
+    if (!swimmingRef.current || item.type !== 'fish') return;
+
+    const swimming = swimmingRef.current;
+    const rect = itemRef.current?.parentElement?.getBoundingClientRect();
+    if (!rect) return;
+
+    const now = Date.now();
+    const bounds = { width: rect.width, height: rect.height };
+
+    // Update horizontal position based on direction
+    swimming.currentX += swimming.direction === 'left' ? -swimming.currentSpeed : swimming.currentSpeed;
+
+    // Check for boundary collision and flip direction
+    if (swimming.direction === 'left' && swimming.currentX <= 60) {
+      // Hit left edge, flip to right
+      swimming.currentX = 60;
+      swimming.direction = 'right';
+      swimming.isFlipped = true;
+      setIsFlipped(true);
+    } else if (swimming.direction === 'right' && swimming.currentX >= bounds.width - 60) {
+      // Hit right edge, flip to left
+      swimming.currentX = bounds.width - 60;
+      swimming.direction = 'left';
+      swimming.isFlipped = false;
+      setIsFlipped(false);
+    }
+
+    // Add slight bobbing motion for realism
+    if (now - swimming.lastBobChange > 2000 + Math.random() * 3000) {
+      swimming.bobOffset = (Math.random() - 0.5) * 8;
+      swimming.lastBobChange = now;
+    }
+
+    // Smooth bob transition
+    swimming.patrolY += (item.y + swimming.bobOffset - swimming.patrolY) * 0.02;
+    swimming.currentY = swimming.patrolY;
+
+    // Occasionally vary speed slightly for natural movement
+    if (now - swimming.lastSpeedChange > 5000 + Math.random() * 8000) {
+      const speedVariation = 0.8 + Math.random() * 0.4;
+      swimming.currentSpeed = swimming.baseSpeed * speedVariation;
+      swimming.lastSpeedChange = now;
+    }
+
+    setSwimmingPosition({ x: swimming.currentX, y: swimming.currentY });
+    animationRef.current = requestAnimationFrame(swim);
+  }, [item.type, item.y]);
+
+  // Start swimming when component mounts or item changes
+  useEffect(() => {
+    if (item.type === 'fish' && !isDragging && !isDragActive) {
+      initializeSwimming();
+      animationRef.current = requestAnimationFrame(swim);
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [item.type, item.x, item.y, isDragging, isDragActive, initializeSwimming, swim]);
 
   useEffect(() => {
     if (isDragActive) {
@@ -141,29 +225,56 @@ const AquariumItem: React.FC<{
     }
   }, [isDragActive, handleMouseMove, handleMouseUp]);
 
-  // Get animation class based on item type
-  const getAnimationClass = () => {
-    if (item.type === 'decoration') return '';
-    const animation = ANIMAL_ANIMATIONS[item.id];
-    return animation ? `${animation.className} ${animation.duration}` : '';
-  };
+  // Update swimming position when item position changes externally
+  useEffect(() => {
+    if (!isDragActive && !isDragging) {
+      setSwimmingPosition({ x: item.x, y: item.y });
+    }
+  }, [item.x, item.y, isDragActive, isDragging]);
 
   return (
     <div
       ref={itemRef}
       className={`absolute z-20 cursor-move select-none ${isSelected ? 'z-30' : ''}`}
       style={{
-        left: `${item.x}px`,
-        top: `${item.y}px`,
-        transform: `translate(-50%, -50%) scale(${item.scale})`,
+        left: `${swimmingPosition.x}px`,
+        top: `${swimmingPosition.y}px`,
+        transform: `translate(-50%, -50%) scale(${item.scale}) scaleX(${isFlipped ? -1 : 1})`,
       }}
       onMouseDown={handleMouseDown}
       onClick={onSelect}
       onWheel={handleWheel}
     >
+      {/* Selection glow effect */}
+      {isSelected && (
+        <div className="absolute inset-0 -m-4 rounded-full bg-cyan-400/30 blur-xl animate-pulse" />
+      )}
+
       {/* Selection Controls - Only show when item is selected */}
       {isSelected && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex gap-2 z-40 bg-black/20 backdrop-blur-sm rounded-lg p-2">
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 flex gap-2 z-40">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const newScale = Math.max(0.3, item.scale - 0.1);
+              onScaleUpdate(newScale);
+            }}
+            className="w-8 h-8 bg-blue-500 hover:bg-blue-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
+            title="Decrease Size"
+          >
+            −
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const newScale = Math.min(3.0, item.scale + 0.1);
+              onScaleUpdate(newScale);
+            }}
+            className="w-8 h-8 bg-green-500 hover:bg-green-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
+            title="Increase Size"
+          >
+            +
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -181,22 +292,37 @@ const AquariumItem: React.FC<{
       <img
         src={item.imageUrl}
         alt={item.name}
-        className={`select-none transition-all duration-200 hover:brightness-110 pointer-events-none ${getAnimationClass()}`}
+        className={`select-none transition-all duration-200 hover:brightness-110 pointer-events-none ${
+          item.type === 'fish'
+            ? 'drop-shadow-lg animate-fin-flutter'
+            : ''
+        }`}
+        style={item.type === 'fish' ? {
+          filter: 'drop-shadow(0 0 8px rgba(103, 232, 249, 0.2)) drop-shadow(0 0 16px rgba(103, 232, 249, 0.1))'
+        } : {}}
         draggable={false}
       />
     </div>
   );
 };
 
-// WarehouseItem Component - for items in warehouse
+// WarehouseItem Component - for items in warehouse with drag-and-drop
 const WarehouseItem: React.FC<{
   item: AquariumStateItem;
-  onAddToAquarium: () => void;
-}> = ({ item, onAddToAquarium }) => {
+  onDragStart: (item: AquariumStateItem) => void;
+}> = ({ item, onDragStart }) => {
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    // Store the dragged item data
+    e.dataTransfer.setData('application/json', JSON.stringify(item));
+    e.dataTransfer.effectAllowed = 'move';
+    onDragStart(item);
+  }, [item, onDragStart]);
+
   return (
     <div
-      className="group relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
-      onClick={onAddToAquarium}
+      draggable
+      onDragStart={handleDragStart}
+      className="group relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-grab active:cursor-grabbing"
     >
       <div className="aspect-square bg-white/60 rounded-lg p-3 mb-3 flex items-center justify-center">
         <img
@@ -209,7 +335,7 @@ const WarehouseItem: React.FC<{
         {item.name}
       </h4>
       <div className="mt-2 w-full px-3 py-1 bg-slate-500 hover:bg-slate-400 text-white text-xs rounded-lg transition-colors text-center">
-        Click to Place
+        Drag to Aquarium
       </div>
     </div>
   );
@@ -230,35 +356,66 @@ const Aquarium = () => {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [isWarehouseOpen, setIsWarehouseOpen] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [draggedItem, setDraggedItem] = useState<AquariumStateItem | null>(null);
 
   const aquariumRef = useRef<HTMLDivElement>(null);
 
   // ================= MODULAR FUNCTIONS =================
 
-  // Save state to localStorage
-  const saveState = useCallback(() => {
+  // Save state to Supabase database
+  const saveState = useCallback(async () => {
+    if (!user) return;
+
     try {
-      localStorage.setItem("aquariumItems", JSON.stringify(aquariumState));
-      console.log("Aquarium state saved:", aquariumState.length, "items");
+      const aquariumItems = aquariumState.filter(item => !item.fromWarehouse);
+      const warehouseItems = aquariumState.filter(item => item.fromWarehouse);
+
+      const { error } = await supabase
+        .from('user_aquarium')
+        .upsert({
+          user_id: user.id,
+          aquarium_items: aquariumItems,
+          warehouse_items: warehouseItems,
+        } as unknown as TablesInsert<'user_aquarium'>);
+
+      if (error) {
+        console.error("Error saving aquarium state:", error);
+      } else {
+        console.log("Aquarium state saved to database for user:", user.id, aquariumItems.length, "aquarium items,", warehouseItems.length, "warehouse items");
+      }
     } catch (error) {
       console.error("Error saving aquarium state:", error);
     }
-  }, [aquariumState]);
+  }, [aquariumState, user]);
 
-  // Load state from localStorage
-  const loadState = useCallback(() => {
+  // Load state from Supabase database
+  const loadState = useCallback(async () => {
+    if (!user) return [];
+
     try {
-      const saved = localStorage.getItem("aquariumItems");
-      if (saved) {
-        const parsedState = JSON.parse(saved);
-        console.log("Loaded aquarium state:", parsedState.length, "items");
-        return parsedState;
+      const { data, error } = await supabase
+        .from('user_aquarium')
+        .select('aquarium_items, warehouse_items')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error("Error loading aquarium state:", error);
+        return [];
+      }
+
+      if (data) {
+        const aquariumItems = (data.aquarium_items as unknown as AquariumStateItem[]) || [];
+        const warehouseItems = (data.warehouse_items as unknown as AquariumStateItem[]) || [];
+        const allItems = [...aquariumItems, ...warehouseItems];
+        console.log("Loaded aquarium state from database for user:", user.id, allItems.length, "total items");
+        return allItems;
       }
     } catch (error) {
       console.error("Error loading aquarium state:", error);
     }
     return [];
-  }, []);
+  }, [user]);
 
   // Add item to aquarium
   const addItemToAquarium = (item: AquariumStateItem, x: number = 400, y: number = 300) => {
@@ -417,11 +574,48 @@ const Aquarium = () => {
     return currentState;
   }, [creaturesInTank, decorationsInTank]);
 
+  // ================= DRAG AND DROP HANDLERS =================
+
+  // Handle drag start from warehouse
+  const handleWarehouseDragStart = useCallback((item: AquariumStateItem) => {
+    setDraggedItem(item);
+    setDraggedItemId(item.id);
+  }, []);
+
+  // Handle drop on aquarium
+  const handleAquariumDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+
+    if (!draggedItem) return;
+
+    const rect = aquariumRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    // Calculate drop position relative to aquarium
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Constrain to aquarium bounds
+    const constrainedX = Math.max(50, Math.min(rect.width - 50, x));
+    const constrainedY = Math.max(50, Math.min(rect.height - 50, y));
+
+    addItemToAquarium(draggedItem, constrainedX, constrainedY);
+    setDraggedItem(null);
+    setDraggedItemId(null);
+    setIsWarehouseOpen(false);
+  }, [draggedItem, addItemToAquarium]);
+
+  // Handle drag over aquarium
+  const handleAquariumDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
   // ================= INITIALIZATION =================
 
   // Load items from shop context and localStorage
   useEffect(() => {
-    const loadAquariumItems = () => {
+    const loadAquariumItems = async () => {
       console.log("Loading aquarium items...");
 
       // Get items from shop context
@@ -489,8 +683,8 @@ const Aquarium = () => {
         };
       });
 
-      // Load saved state from localStorage (positions and states)
-      const savedState = loadState();
+      // Load saved state from Supabase database
+      const savedState = await loadState();
 
       if (savedState && savedState.length > 0) {
         console.log("Found saved state, merging with shop items...");
@@ -604,6 +798,8 @@ const Aquarium = () => {
           <div
             ref={aquariumRef}
             className="glass-effect rounded-3xl border border-white/20 p-8 md:p-12 min-h-[600px] relative overflow-hidden shadow-[0_0_50px_hsl(var(--glow-cyan)/0.3)]"
+            onDrop={handleAquariumDrop}
+            onDragOver={handleAquariumDragOver}
           >
             {/* Aquarium Background */}
             <video
@@ -659,7 +855,7 @@ const Aquarium = () => {
           <div className="mt-8 grid md:grid-cols-4 gap-4">
             <Button
               onClick={() => navigate("/shop")}
-              className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-gradient-to-r from-violet-200/30 via-purple-300/35 to-fuchsia-300/40 hover:from-violet-100/40 hover:via-purple-200/45 hover:to-fuchsia-200/50 text-violet-50 border border-violet-200/40 backdrop-blur-sm h-20 text-lg font-semibold rounded-xl"
+              className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-gradient-to-r from-violet-200/30 via-purple-300/35 to-fuchsia-300/40 hover:from-violet-100/40 hover:via-purple-200/45 hover:to-purple-200/50 text-violet-50 border border-violet-200/40 backdrop-blur-sm h-20 text-lg font-semibold rounded-xl"
             >
               🛍️ Visit Shop
             </Button>
@@ -695,7 +891,7 @@ const Aquarium = () => {
                   <Warehouse className="w-6 h-6" />
                   Warehouse
                 </h2>
-                <p className="text-slate-600 mt-1">Click items to place them in your aquarium</p>
+                <p className="text-slate-600 mt-1">Drag items to place them in your aquarium</p>
               </div>
               <button
                 onClick={() => setIsWarehouseOpen(false)}
@@ -719,7 +915,7 @@ const Aquarium = () => {
                         <WarehouseItem
                           key={item.id}
                           item={item}
-                          onAddToAquarium={() => addItemToAquarium(item)}
+                          onDragStart={handleWarehouseDragStart}
                         />
                       ))}
                   </div>
@@ -739,7 +935,7 @@ const Aquarium = () => {
                         <WarehouseItem
                           key={item.id}
                           item={item}
-                          onAddToAquarium={() => addItemToAquarium(item)}
+                          onDragStart={handleWarehouseDragStart}
                         />
                       ))}
                   </div>

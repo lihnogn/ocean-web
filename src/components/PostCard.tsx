@@ -140,7 +140,7 @@ export const PostCard = ({ post }: PostCardProps) => {
   const isOwnPost = currentUserProfile?.user_id === post.user_profile?.user_id;
 
   return (
-    <div className="glass-effect rounded-3xl border border-white/20 p-6 animate-fade-in hover:border-white/30 transition-all duration-300">
+    <div className="glass-effect rounded-3xl border border-white/20 p-6 animate-fade-in hover:border-white/30 transition-all duration-300 relative">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -154,11 +154,11 @@ export const PostCard = ({ post }: PostCardProps) => {
           <div className="flex-1">
             <Link
               to={`/profile/${post.user_profile.user_id}`}
-              className="font-semibold text-white hover:text-primary transition-colors"
+              className="font-semibold ocean-dark-text hover:text-primary transition-colors"
             >
               {post.user_profile.username}
             </Link>
-            <p className="text-sm text-white/60">
+            <p className="text-sm ocean-dark-text/60">
               {formatTimestamp(post.created_at)}
             </p>
           </div>
@@ -166,7 +166,7 @@ export const PostCard = ({ post }: PostCardProps) => {
 
         {/* Default More button (hidden when owner menu is shown) */}
         {!isOwnPost && (
-          <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10">
+          <Button variant="ghost" size="sm" className="ocean-dark-text/60 hover:ocean-dark-text hover:bg-white/10">
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         )}
@@ -177,7 +177,7 @@ export const PostCard = ({ post }: PostCardProps) => {
         <div className="absolute top-4 right-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10">
+              <Button variant="ghost" size="sm" className="ocean-dark-text/60 hover:ocean-dark-text hover:bg-white/10">
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -187,7 +187,7 @@ export const PostCard = ({ post }: PostCardProps) => {
                   setEditText(post.text || "");
                   setIsEditModalOpen(true);
                 }}
-                className="text-white hover:bg-slate-700 cursor-pointer"
+                className="ocean-dark-text hover:bg-slate-700 cursor-pointer"
               >
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Post
@@ -206,7 +206,7 @@ export const PostCard = ({ post }: PostCardProps) => {
 
       {/* Content */}
       <div className="mb-4">
-        <p className="text-white/90 leading-relaxed mb-3">
+        <p className="ocean-dark-text/90 leading-relaxed mb-3">
           {post.text}
         </p>
 
@@ -223,7 +223,7 @@ export const PostCard = ({ post }: PostCardProps) => {
 
       {/* Stats */}
       {(post.likes_count || post.comments_count || post.shares) && (
-        <div className="flex items-center gap-2 sm:gap-4 mb-4 text-sm text-white/60 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-4 mb-4 text-sm ocean-dark-text/60 flex-wrap">
           {post.likes_count > 0 && (
             <span className="flex items-center gap-1">
               <Heart className="w-4 h-4 fill-red-500 text-red-500" />
@@ -256,7 +256,7 @@ export const PostCard = ({ post }: PostCardProps) => {
             className={`hover:bg-white/10 transition-all duration-200 ${
               post.user_liked
                 ? 'text-red-400 hover:text-red-300'
-                : 'text-white/70 hover:text-white'
+                : 'ocean-dark-text/70 hover:ocean-dark-text'
             }`}
           >
             <Heart
@@ -271,7 +271,7 @@ export const PostCard = ({ post }: PostCardProps) => {
             variant="ghost"
             size="sm"
             onClick={() => setShowComments(!showComments)}
-            className="text-white/70 hover:text-white hover:bg-white/10"
+            className="ocean-dark-text/70 hover:ocean-dark-text hover:bg-white/10"
           >
             <MessageCircle className="w-4 h-4 mr-2" />
             Comment
@@ -281,7 +281,7 @@ export const PostCard = ({ post }: PostCardProps) => {
             variant="ghost"
             size="sm"
             onClick={handleShare}
-            className="text-white/70 hover:text-white hover:bg-white/10"
+            className="ocean-dark-text/70 hover:ocean-dark-text hover:bg-white/10"
           >
             <Share className="w-4 h-4 mr-2" />
             Share
@@ -291,7 +291,7 @@ export const PostCard = ({ post }: PostCardProps) => {
         {/* Gift Stars Dropdown - Hidden on mobile if no space */}
         {currentUserProfile && currentUserProfile.user_id !== post.user_profile.user_id && (
           <div className="flex items-center gap-1 sm:flex-shrink-0">
-            <span className="text-sm text-white/60 mr-2 hidden sm:inline">Gift:</span>
+            <span className="text-sm ocean-dark-text/60 mr-2 hidden sm:inline">Gift:</span>
             <div className="flex gap-1">
               {[1, 5, 10].map((amount) => (
                 <Button
@@ -323,17 +323,17 @@ export const PostCard = ({ post }: PostCardProps) => {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="glass-effect border border-white/20 max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Edit Post</DialogTitle>
+            <DialogTitle className="ocean-dark-text">Edit Post</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-text" className="text-white">Post Content</Label>
+              <Label htmlFor="edit-text" className="ocean-dark-text">Post Content</Label>
               <Textarea
                 id="edit-text"
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none focus:border-primary/50 focus:ring-primary/20"
+                className="bg-white/10 border-white/20 ocean-dark-text placeholder:ocean-dark-text/50 resize-none focus:border-primary/50 focus:ring-primary/20"
                 placeholder="Edit your post content..."
                 disabled={isEditing}
               />
@@ -343,7 +343,7 @@ export const PostCard = ({ post }: PostCardProps) => {
               <Button
                 variant="outline"
                 onClick={() => setIsEditModalOpen(false)}
-                className="border-white/20 text-white/80 hover:bg-white/10"
+                className="border-white/20 ocean-dark-text/80 hover:bg-white/10"
                 disabled={isEditing}
               >
                 Cancel

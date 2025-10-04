@@ -229,6 +229,41 @@ export type Database = {
           }
         ]
       }
+      user_aquarium: {
+        Row: {
+          id: string
+          user_id: string
+          aquarium_items: Json
+          warehouse_items: Json
+          updated_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          aquarium_items?: Json
+          warehouse_items?: Json
+          updated_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          aquarium_items?: Json
+          warehouse_items?: Json
+          updated_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_aquarium_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "USERS"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

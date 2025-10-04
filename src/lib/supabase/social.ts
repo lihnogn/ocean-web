@@ -72,7 +72,7 @@ export const getPostsWithDetails = async (): Promise<PostWithDetails[]> => {
       .from('posts')
       .select(`
         *,
-        user_profile:user_profiles(*)
+        user_profiles(*)
       `)
       .order('created_at', { ascending: false })
       .limit(50);

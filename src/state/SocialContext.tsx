@@ -12,7 +12,6 @@ import {
   getFriendsList,
   syncUserData,
   getFriendsPosts,
-  createPostWithMood,
   FriendRequest as FriendRequestType
 } from "@/lib/supabase/social";
 import { initializeUserProfile } from "@/lib/supabase/data-sync";
@@ -54,7 +53,6 @@ interface SocialContextValue {
 
   // Actions
   createPost: (text: string, imageUrl?: string) => Promise<boolean>;
-  createPostWithMood: (text: string, imageUrl?: string, mood?: string) => Promise<boolean>;
   sharePost: (postId: string) => Promise<boolean>;
   likePost: (postId: string) => Promise<boolean>;
   unlikePost: (postId: string) => Promise<boolean>;
@@ -120,7 +118,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .from('posts')
         .select(`
           *,
-          user_profile:user_profiles(*),
+          user_profiles(*),
           likes(count),
           comments(count),
           star_gifts(amount)
@@ -133,12 +131,14 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Process posts with aggregated data
       const processedPosts: Post[] = postsData.map(post => ({
         ...post,
+        user_profile: post.user_profiles, // Map user_profiles to user_profile
         likes_count: post.likes?.[0]?.count || 0,
         comments_count: post.comments?.[0]?.count || 0,
         user_stars: post.star_gifts?.reduce((sum, gift) => sum + (gift.amount || 0), 0) || 0,
         likes: undefined, // Remove the count array
         comments: undefined, // Remove the count array
         star_gifts: undefined, // Remove the gifts array
+        user_profiles: undefined, // Remove the original field
       }));
 
       setPosts(processedPosts);
@@ -222,36 +222,6 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return true;
     } catch (err) {
       console.error('Error creating post:', err);
-      toast.error('Failed to create post');
-      return false;
-    }
-  };
-
-  // Create post with mood (enhanced version)
-  const createPostWithMood = async (text: string, imageUrl?: string, mood?: string): Promise<boolean> => {
-    try {
-      if (!currentUserProfile) {
-        toast.error('Please log in to create a post');
-        return false;
-      }
-
-      const { data, error } = await supabase
-        .from('posts')
-        .insert({
-          user_id: currentUserProfile.user_id,
-          text,
-          image_url: imageUrl || null,
-          // mood field will be available once database is updated
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast.success('Post created successfully!');
-      return true;
-    } catch (err) {
-      console.error('Error creating post with mood:', err);
       toast.error('Failed to create post');
       return false;
     }
@@ -474,7 +444,6 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     suggestedUsers,
     trendingUsers,
     createPost,
-    createPostWithMood,
     sharePost: sharePostAction,
     likePost,
     unlikePost,

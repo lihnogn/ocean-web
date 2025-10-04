@@ -125,11 +125,11 @@ const Shop = () => {
             />
           </div>
 
-          <h3 className="font-semibold text-white mb-2 text-center">{item.name}</h3>
+          <h3 className="font-semibold ocean-dark-text mb-2 text-center">{item.name}</h3>
 
           <div className="flex items-center justify-center gap-1 mb-3">
             <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-            <span className="font-bold text-white">{item.cost}</span>
+            <span className="font-bold ocean-dark-text">{item.cost}</span>
           </div>
 
           <Button
@@ -147,11 +147,11 @@ const Shop = () => {
                 ? 'bg-gradient-to-r from-cyan-200/25 via-blue-300/30 to-purple-300/35 hover:from-cyan-100/35 hover:via-blue-200/40 hover:to-purple-200/45 text-cyan-50 border border-cyan-200/40 backdrop-blur-sm'
                 : item.type === 'creature'
                   ? isInTank
-                    ? 'bg-gradient-to-r from-emerald-300/40 via-green-400/30 to-teal-400/40 hover:from-emerald-200/50 hover:via-green-300/40 hover:to-teal-300/50 text-white/90 border border-emerald-300/30 backdrop-blur-sm'
-                    : 'bg-gradient-to-r from-sky-300/40 via-cyan-400/30 to-blue-400/40 hover:from-sky-200/50 hover:via-cyan-300/40 hover:to-blue-300/50 text-white/90 border border-sky-300/30 backdrop-blur-sm'
+                    ? 'bg-gradient-to-r from-emerald-300/40 via-green-400/30 to-teal-400/40 hover:from-emerald-200/50 hover:via-green-300/40 hover:to-teal-300/50 ocean-dark-text/90 border border-emerald-300/30 backdrop-blur-sm'
+                    : 'bg-gradient-to-r from-sky-300/40 via-cyan-400/30 to-blue-400/40 hover:from-sky-200/50 hover:via-cyan-300/40 hover:to-blue-300/50 ocean-dark-text/90 border border-sky-300/30 backdrop-blur-sm'
                   : decorationsInTank.some(d => d.id === item.id)
-                    ? 'bg-gradient-to-r from-emerald-300/40 via-green-400/30 to-teal-400/40 hover:from-emerald-200/50 hover:via-green-300/40 hover:to-teal-300/50 text-white/90 border border-emerald-300/30 backdrop-blur-sm'
-                    : 'bg-gradient-to-r from-violet-300/40 via-purple-400/30 to-fuchsia-400/40 hover:from-violet-200/50 hover:via-purple-300/40 hover:to-fuchsia-300/50 text-white/90 border border-violet-300/30 backdrop-blur-sm'
+                    ? 'bg-gradient-to-r from-emerald-300/40 via-green-400/30 to-teal-400/40 hover:from-emerald-200/50 hover:via-green-300/40 hover:to-teal-300/50 ocean-dark-text/90 border border-emerald-300/30 backdrop-blur-sm'
+                    : 'bg-gradient-to-r from-violet-300/40 via-purple-400/30 to-fuchsia-400/40 hover:from-violet-200/50 hover:via-purple-300/40 hover:to-fuchsia-300/50 ocean-dark-text/90 border border-violet-300/30 backdrop-blur-sm'
             }`}
             disabled={isInTank}
           >
@@ -193,7 +193,7 @@ const Shop = () => {
           {/* Header */}
           <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
             <h1 className="text-4xl md:text-5xl font-bold text-glow text-center animate-float">
-              🛍️ Ocean Shop
+              Ocean Shop
             </h1>
             <StarCount count={stars} showAnimation />
           </div>
@@ -219,7 +219,7 @@ const Shop = () => {
             {/* Sea Creatures Tab */}
             <TabsContent value="creatures" className="space-y-6">
               <div className="text-center mb-6">
-                <p className="text-lg text-white/80">
+                <p className="text-lg ocean-dark-text/80">
                   Discover amazing sea creatures to add to your aquarium!
                 </p>
               </div>
@@ -234,7 +234,7 @@ const Shop = () => {
             {/* Decorations Tab */}
             <TabsContent value="decorations" className="space-y-6">
               <div className="text-center mb-6">
-                <p className="text-lg text-white/80">
+                <p className="text-lg ocean-dark-text/80">
                   Beautify your aquarium with stunning decorations!
                 </p>
               </div>
