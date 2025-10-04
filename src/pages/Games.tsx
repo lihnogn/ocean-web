@@ -188,7 +188,7 @@ const Games = () => {
 
 // ===== Full-screen Game 2: Runner / Dodge =====
 type G2Skin = { id: string; name: string; img: string; cost: number };
-const G2_BG = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BG2.mp4?updatedAt=1759345792705";
+const G2_BG = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game2.%20mp4?updatedAt=1759396573159";
 const G2_STAR = "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/34.png?updatedAt=1759317102787";
 const G2_OBS = [
   "https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/53.png?updatedAt=1759344290562",
@@ -225,12 +225,13 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
   const [sessionStars, setSessionStars] = useState(0);
   const [unlockedSkins, setUnlockedSkins] = useState<Set<string>>(new Set(['crab', 'shrimp', 'oyster']));
   const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0); // carousel index
+  const [gameTransition, setGameTransition] = useState<'fade-in' | 'fade-out' | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
 
   // ===== ASSETS (exact URLs) =====
-  const BG_VIDEO = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game2.%20mp4?updatedAt=1759396573159';
+  const BG_VIDEO = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/BG2.mp4?updatedAt=1759345792705';
 
   const SKINS = [
     { id: 'crab', name: 'CRAB', img: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/43.png?updatedAt=1759350573972', cost: 0 },
@@ -258,19 +259,33 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
   const STAR_IMG = 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/34.png?updatedAt=1759317102787';
 
   // ===== GAME STATE =====
-  const playerRef = useRef<{ x: number; y: number; vx: number; img: HTMLImageElement } | null>(null);
-  const obstaclesRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement; id: number }>>([]);
-  const starsRef = useRef<Array<{ x: number; y: number; vy: number; img: HTMLImageElement; id: number }>>([]);
-  const spawnQueueRef = useRef<Array<'obstacle' | 'star'>>([]);
-  const lastSpawnTimeRef = useRef(0);
-  const spawnIntervalRef = useRef(900);
-  const globalSpeedRef = useRef(150);
+  const gameStateRef = useRef<{
+    mode: 'select' | 'playing' | 'gameover' | 'win';
+    frame: number;
+    player: { x: number; y: number; width: number; height: number; img: HTMLImageElement };
+    obstacles: Array<{ x: number; y: number; width: number; height: number; speed: number; img: HTMLImageElement; id: number }>;
+    stars: Array<{ x: number; y: number; width: number; height: number; speed: number; img: HTMLImageElement; id: number }>;
+    score: number;
+    totalItems: number;
+    speedFactor: number;
+    lastSpawnFrame: number;
+    spawnInterval: number;
+    moveLeft: boolean;
+    moveRight: boolean;
+  } | null>(null);
+
   const keysRef = useRef<Set<string>>(new Set());
 
   // ===== EXIT HANDLER =====
   const exitGame = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    onEarnStars(sessionStars);
+
+    const gameState = gameStateRef.current;
+    if (gameState && (gameState.mode === 'win' || gameState.mode === 'gameover')) {
+      onEarnStars(sessionStars);
+      console.log(`Awarding ${sessionStars} stars to player`);
+    }
+
     onClose();
   };
 
@@ -290,150 +305,250 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
   const startGame = () => {
     if (!selectedSkin || !unlockedSkins.has(selectedSkin)) return;
 
-    setMode('playing');
-    setSessionStars(0);
+    // Start fade out transition
+    setGameTransition('fade-out');
+    setTimeout(() => {
+      setMode('playing');
+      console.log('Mode set to playing');
+      setSessionStars(0);
+      setGameTransition('fade-in');
 
-    // Create spawn queue: 14 obstacles + 3 stars, shuffled
-    const queue: Array<'obstacle' | 'star'> = [];
-    for (let i = 0; i < 7; i++) queue.push('obstacle', 'obstacle');
-    for (let i = 0; i < 3; i++) queue.push('star');
-    // Shuffle
-    for (let i = queue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [queue[i], queue[j]] = [queue[j], queue[i]];
-    }
-    spawnQueueRef.current = queue;
+      // Remove fade in after animation completes
+      setTimeout(() => {
+        setGameTransition(null);
+      }, 500);
+    }, 300);
 
-    // Initialize player at bottom center
+    // Initialize game state
     const canvas = canvasRef.current;
     if (canvas) {
       const rect = canvas.getBoundingClientRect();
       const skin = SKINS.find(s => s.id === selectedSkin)!;
       const playerImg = new Image();
-      playerImg.src = skin.img;
-      playerRef.current = {
-        x: rect.width / 2 - 40,
-        y: rect.height - 100,
-        vx: 0,
-        img: playerImg,
+      playerImg.onload = () => {
+        console.log('Player image loaded successfully');
       };
+      playerImg.onerror = () => {
+        console.error('Failed to load player image:', skin.img);
+      };
+      playerImg.src = skin.img;
+
+      gameStateRef.current = {
+        mode: 'playing',
+        frame: 0,
+        player: {
+          x: rect.width / 2,
+          y: rect.height - 150,
+          width: 100,
+          height: 100,
+          img: playerImg
+        },
+        obstacles: [],
+        stars: [],
+        score: 0,
+        totalItems: 0,
+        speedFactor: 1,
+        lastSpawnFrame: 0,
+        spawnInterval: 80,
+        moveLeft: false,
+        moveRight: false
+      };
+
+      console.log('Game state initialized:', gameStateRef.current);
     }
 
-    obstaclesRef.current = [];
-    starsRef.current = [];
-    lastSpawnTimeRef.current = 0;
-    spawnIntervalRef.current = 900;
-    globalSpeedRef.current = 150;
-
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    console.log('Starting game loop...');
     rafRef.current = requestAnimationFrame(gameLoop);
   };
 
   // ===== GAME LOOP =====
   const gameLoop = (timestamp: number) => {
+    console.log('🎮 GAMELOOP CALLED - timestamp:', timestamp);
+
     const canvas = canvasRef.current!;
-    const ctx = canvas.getContext('2d')!;
+    console.log('Canvas ref exists:', !!canvas);
+
+    if (!canvas) {
+      console.error('Canvas ref is null!');
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    console.log('Canvas context:', ctx);
+
+    if (!ctx) {
+      console.error('Failed to get 2D context!');
+      return;
+    }
+
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
 
-    const player = playerRef.current!;
-    const dt = Math.min(0.05, (timestamp - (lastSpawnTimeRef.current || timestamp)) / 1000);
-    lastSpawnTimeRef.current = timestamp;
+    console.log('Canvas dimensions:', canvas.width, canvas.height, 'rect:', rect.width, rect.height);
+
+    const gameState = gameStateRef.current!;
+    if (!gameState) {
+      console.error('Game state is null in gameLoop!');
+      return;
+    }
+
+    console.log('Game loop running, frame:', gameState.frame, 'obstacles:', gameState.obstacles.length, 'stars:', gameState.stars.length);
+
+    // Update frame
+    gameState.frame++;
 
     // Handle input
-    player.vx = 0;
-    if (keysRef.current.has('ArrowLeft') || keysRef.current.has('a')) player.vx = -300;
-    if (keysRef.current.has('ArrowRight') || keysRef.current.has('d')) player.vx = 300;
-    player.x += player.vx * dt;
-    player.x = Math.max(0, Math.min(rect.width - 80, player.x));
+    if (keysRef.current.has('ArrowLeft') || keysRef.current.has('a')) gameState.moveLeft = true;
+    if (keysRef.current.has('ArrowRight') || keysRef.current.has('d')) gameState.moveRight = true;
 
-    // Spawn logic
-    if (spawnQueueRef.current.length > 0 && timestamp - lastSpawnTimeRef.current > spawnIntervalRef.current) {
-      const type = spawnQueueRef.current.shift()!;
+    // Move player
+    if (gameState.moveLeft) gameState.player.x -= 8;
+    if (gameState.moveRight) gameState.player.x += 8;
+    gameState.moveLeft = false;
+    gameState.moveRight = false;
 
-      // Random X position with collision avoidance
-      let x = Math.random() * (rect.width - 100) + 50;
-      // Simple collision check with existing objects
-      const existing = [...obstaclesRef.current, ...starsRef.current];
-      for (let attempt = 0; attempt < 5; attempt++) {
-        let collision = false;
-        for (const obj of existing) {
-          if (Math.abs(x - obj.x) < 100) collision = true;
-        }
-        if (!collision) break;
-        x = Math.random() * (rect.width - 100) + 50;
+    // Clamp player position
+    gameState.player.x = Math.max(0, Math.min(rect.width - gameState.player.width, gameState.player.x));
+
+    // Spawn logic (every 80-120 frames)
+    if (gameState.frame - gameState.lastSpawnFrame >= gameState.spawnInterval && gameState.totalItems < 17) {
+      const shouldSpawnObstacle = Math.random() < 0.82; // 82% chance for obstacle, 18% for star
+
+      if (shouldSpawnObstacle) {
+        // Spawn obstacle
+        const obstacleImg = new Image();
+        obstacleImg.onload = () => console.log('Obstacle image loaded:', obstacleImg.src);
+        obstacleImg.onerror = () => console.error('Failed to load obstacle image:', obstacleImg.src);
+        obstacleImg.src = OBSTACLE_IMAGES[Math.floor(Math.random() * OBSTACLE_IMAGES.length)];
+        gameState.obstacles.push({
+          x: Math.random() * (rect.width - 100) + 50,
+          y: -100,
+          width: 60,
+          height: 60,
+          speed: 4 + 0.05 * gameState.totalItems,
+          img: obstacleImg,
+          id: Date.now() + Math.random()
+        });
+        gameState.totalItems++;
+      } else if (gameState.stars.length < 3) {
+        // Spawn star
+        const starImg = new Image();
+        starImg.onload = () => console.log('Star image loaded:', starImg.src);
+        starImg.onerror = () => console.error('Failed to load star image:', starImg.src);
+        starImg.src = STAR_IMG;
+        gameState.stars.push({
+          x: Math.random() * (rect.width - 100) + 50,
+          y: -100,
+          width: 32,
+          height: 32,
+          speed: 3.5,
+          img: starImg,
+          id: Date.now() + Math.random()
+        });
+        gameState.totalItems++;
       }
 
-      if (type === 'obstacle') {
-        const obsIndex = Math.floor(Math.random() * 7);
-        const img = new Image();
-        img.src = OBSTACLE_IMAGES[obsIndex];
-        obstaclesRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img, id: Date.now() + Math.random() });
-      } else {
-        const img = new Image();
-        img.src = STAR_IMG;
-        starsRef.current.push({ x, y: -60, vy: globalSpeedRef.current, img, id: Date.now() + Math.random() });
-      }
-
-      lastSpawnTimeRef.current = timestamp;
-      spawnIntervalRef.current = Math.max(350, spawnIntervalRef.current - 15);
-      globalSpeedRef.current *= 1.01;
+      gameState.lastSpawnFrame = gameState.frame;
+      gameState.spawnInterval = 80 + Math.random() * 40; // 80-120 frames
     }
 
     // Update obstacles
-    obstaclesRef.current = obstaclesRef.current.filter(obs => {
-      obs.y += obs.vy * dt;
+    gameState.obstacles = gameState.obstacles.filter(obs => {
+      obs.y += obs.speed * gameState.speedFactor;
       if (obs.y > rect.height + 100) {
-        setSessionStars(s => s + 1); // dodged
-        return false;
-      }
-      // Collision detection (rectangle with padding)
-      const hitbox = { x: player.x + 10, y: player.y + 10, w: 60, h: 60 };
-      if (hitbox.x < obs.x + 60 && hitbox.x + hitbox.w > obs.x && hitbox.y < obs.y + 60 && hitbox.y + hitbox.h > obs.y) {
-        setMode('gameover');
+        gameState.score += 1; // dodged
+        setSessionStars(s => s + 1);
         return false;
       }
       return true;
     });
 
     // Update stars
-    starsRef.current = starsRef.current.filter(star => {
-      star.y += star.vy * dt;
+    gameState.stars = gameState.stars.filter(star => {
+      star.y += star.speed * gameState.speedFactor;
       if (star.y > rect.height + 100) return false;
-      // Collision detection
-      const hitbox = { x: player.x + 10, y: player.y + 10, w: 60, h: 60 };
-      if (hitbox.x < star.x + 32 && hitbox.x + hitbox.w > star.x && hitbox.y < star.y + 32 && hitbox.y + hitbox.h > star.y) {
-        setSessionStars(s => s + 2);
-        // Play sparkle sound (placeholder)
-        return false;
-      }
       return true;
     });
+
+    // Collision detection
+    for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
+      const obs = gameState.obstacles[i];
+      if (isColliding(gameState.player, obs)) {
+        gameState.mode = 'gameover';
+        return;
+      }
+    }
+
+    for (let i = gameState.stars.length - 1; i >= 0; i--) {
+      const star = gameState.stars[i];
+      if (isColliding(gameState.player, star)) {
+        gameState.stars.splice(i, 1);
+        gameState.score += 2;
+        setSessionStars(s => s + 2);
+      }
+    }
 
     // Draw
     ctx.clearRect(0, 0, rect.width, rect.height);
     // Background handled by CSS video
 
-    // Draw player with glow
-    ctx.shadowColor = 'cyan';
-    ctx.shadowBlur = 15;
-    ctx.drawImage(player.img, player.x, player.y, 80, 80);
-    ctx.shadowBlur = 0;
+    console.log('Drawing player at:', gameState.player.x, gameState.player.y, 'image loaded:', gameState.player.img.complete);
+
+    // Draw a test background to see if canvas is working
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+
+    // Draw player
+    if (gameState.player.img.complete) {
+      ctx.drawImage(gameState.player.img, gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+    } else {
+      console.warn('Player image not loaded yet');
+      // Draw a placeholder rectangle for debugging
+      ctx.fillStyle = 'cyan';
+      ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+    }
 
     // Draw obstacles
-    obstaclesRef.current.forEach(obs => ctx.drawImage(obs.img, obs.x, obs.y, 60, 60));
+    gameState.obstacles.forEach(obs => {
+      if (obs.img.complete) {
+        ctx.drawImage(obs.img, obs.x, obs.y, obs.width, obs.height);
+      } else {
+        console.warn('Obstacle image not loaded:', obs.id);
+        ctx.fillStyle = 'red';
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+      }
+    });
 
     // Draw stars
-    starsRef.current.forEach(star => ctx.drawImage(star.img, star.x, star.y, 32, 32));
+    gameState.stars.forEach(star => {
+      if (star.img.complete) {
+        ctx.drawImage(star.img, star.x, star.y, star.width, star.height);
+      } else {
+        console.warn('Star image not loaded:', star.id);
+        ctx.fillStyle = 'yellow';
+        ctx.fillRect(star.x, star.y, star.width, star.height);
+      }
+    });
 
     // Check win condition
-    if (spawnQueueRef.current.length === 0 && obstaclesRef.current.length === 0 && starsRef.current.length === 0) {
-      setMode('win');
+    if (gameState.totalItems >= 17 && gameState.obstacles.length === 0 && gameState.stars.length === 0) {
+      gameState.mode = 'win';
       return;
     }
 
     rafRef.current = requestAnimationFrame(gameLoop);
+  };
+
+  // Collision detection function
+  const isColliding = (a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) => {
+    return (
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    );
   };
 
   // ===== CONTROLS =====
@@ -441,8 +556,17 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
     const handleKey = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'd'].includes(e.key)) {
         e.preventDefault();
-        if (e.type === 'keydown') keysRef.current.add(e.key);
-        else keysRef.current.delete(e.key);
+        console.log('Key pressed:', e.key, 'type:', e.type);
+        if (e.type === 'keydown') {
+          if (e.key === 'ArrowLeft' || e.key === 'a') {
+            gameStateRef.current!.moveLeft = true;
+            console.log('Move left set to true');
+          }
+          if (e.key === 'ArrowRight' || e.key === 'd') {
+            gameStateRef.current!.moveRight = true;
+            console.log('Move right set to true');
+          }
+        }
       }
     };
     window.addEventListener('keydown', handleKey);
@@ -586,9 +710,23 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
       {/* Game Canvas */}
       {mode === 'playing' && (
         <>
-          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
-          <div className="absolute top-4 left-4 text-white">Stars: {sessionStars}</div>
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full z-10"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.1)', // Semi-transparent background for debugging
+              border: '2px solid red' // Red border for debugging
+            }}
+          />
+          <div className="absolute top-4 left-4 text-white text-lg font-bold">Stars: {sessionStars}</div>
           <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 rounded-xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]">Exit</button>
+
+          {/* Fade transition overlay */}
+          {gameTransition && (
+            <div className={`absolute inset-0 z-20 transition-opacity duration-500 ${
+              gameTransition === 'fade-in' ? 'bg-black/80' : 'bg-black/0'
+            } ${gameTransition === 'fade-out' ? 'bg-black/80' : 'bg-black/0'}`} />
+          )}
         </>
       )}
 

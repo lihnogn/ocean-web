@@ -24,7 +24,7 @@ interface AquariumStateItem {
   x: number; // Position in px (center point)
   y: number;
   scale: number;
-  inAquarium: boolean;
+  fromWarehouse: boolean;
   name: string;
 }
 
@@ -83,52 +83,63 @@ const AquariumItem: React.FC<{
   isDragging?: boolean;
 }> = ({ item, isSelected, onSelect, onPositionUpdate, onScaleUpdate, onRemove, isDragging = false }) => {
   const itemRef = useRef<HTMLDivElement>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
+  const [originalPosition, setOriginalPosition] = useState<Position>({ x: 0, y: 0 });
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Chỉ xử lý chuột trái (button 0)
+    if (e.button !== 0) return;
+
     e.preventDefault();
+    setIsDragActive(true);
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, []);
+    setOriginalPosition({ x: item.x, y: item.y });
+  }, [item.x, item.y]);
 
-  const handlePointerMove = useCallback((e: PointerEvent) => {
-    if (!itemRef.current) return;
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragActive) return;
 
-    const deltaX = Math.abs(e.clientX - dragStart.x);
-    const deltaY = Math.abs(e.clientY - dragStart.y);
-    const threshold = 5;
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
 
-    if (deltaX > threshold || deltaY > threshold) {
-      const rect = itemRef.current.parentElement?.getBoundingClientRect();
-      if (!rect) return;
+    const newX = originalPosition.x + deltaX;
+    const newY = originalPosition.y + deltaY;
 
-      // Calculate center position of the item
-      const centerX = e.clientX;
-      const centerY = e.clientY;
+    // Giới hạn trong vùng hiển thị
+    const rect = itemRef.current?.parentElement?.getBoundingClientRect();
+    if (rect) {
+      const constrainedX = Math.max(50, Math.min(rect.width - 50, newX));
+      const constrainedY = Math.max(50, Math.min(rect.height - 50, newY));
 
-      // 🛑 FIXED: Use fixed boundary calculation to prevent scale-like effects during drag
-      const itemSize = 100; // Fixed size for boundary calculation (not affected by scale)
-      const constrainedX = Math.max(itemSize / 2, Math.min(rect.width - itemSize / 2, centerX));
-      const constrainedY = Math.max(itemSize / 2, Math.min(rect.height - itemSize / 2, centerY));
-
-      // 🎯 POSITION ONLY - Scale is handled separately in UI buttons
+      // Chỉ cập nhật vị trí, KHÔNG ảnh hưởng scale
       onPositionUpdate(constrainedX, constrainedY);
     }
-  }, [dragStart, onPositionUpdate]);
+  }, [isDragActive, dragStart, originalPosition, onPositionUpdate]);
 
-  const handlePointerUp = useCallback(() => {
-    // Selection happens on pointer down, not up
+  const handleMouseUp = useCallback(() => {
+    setIsDragActive(false);
   }, []);
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+
+    const delta = e.deltaY > 0 ? -0.05 : 0.05;
+    const newScale = Math.max(0.5, Math.min(2, item.scale + delta));
+
+    onScaleUpdate(newScale);
+  }, [item.scale, onScaleUpdate]);
+
   useEffect(() => {
-    if (dragStart.x !== 0 || dragStart.y !== 0) {
-      document.addEventListener('pointermove', handlePointerMove);
-      document.addEventListener('pointerup', handlePointerUp);
+    if (isDragActive) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
       return () => {
-        document.removeEventListener('pointermove', handlePointerMove);
-        document.removeEventListener('pointerup', handlePointerUp);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [dragStart, handlePointerMove, handlePointerUp]);
+  }, [isDragActive, handleMouseMove, handleMouseUp]);
 
   // Get animation class based on item type
   const getAnimationClass = () => {
@@ -146,32 +157,13 @@ const AquariumItem: React.FC<{
         top: `${item.y}px`,
         transform: `translate(-50%, -50%) scale(${item.scale})`,
       }}
-      onPointerDown={handlePointerDown}
+      onMouseDown={handleMouseDown}
       onClick={onSelect}
+      onWheel={handleWheel}
     >
       {/* Selection Controls - Only show when item is selected */}
       {isSelected && (
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex gap-2 z-40 bg-black/20 backdrop-blur-sm rounded-lg p-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onScaleUpdate(item.scale * 1.1); // UI BUTTON - ONLY SCALE, NO POSITION
-            }}
-            className="w-8 h-8 bg-cyan-500 hover:bg-cyan-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
-            title="Zoom In (+10%)"
-          >
-            ➕
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onScaleUpdate(item.scale * 0.9); // UI BUTTON - ONLY SCALE, NO POSITION
-            }}
-            className="w-8 h-8 bg-cyan-500 hover:bg-cyan-400 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 hover:scale-110"
-            title="Zoom Out (-10%)"
-          >
-            ➖
-          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -245,37 +237,47 @@ const Aquarium = () => {
 
   // Save state to localStorage
   const saveState = useCallback(() => {
-    localStorage.setItem("aquariumItems", JSON.stringify(aquariumState));
+    try {
+      localStorage.setItem("aquariumItems", JSON.stringify(aquariumState));
+      console.log("Aquarium state saved:", aquariumState.length, "items");
+    } catch (error) {
+      console.error("Error saving aquarium state:", error);
+    }
   }, [aquariumState]);
 
   // Load state from localStorage
   const loadState = useCallback(() => {
-    const saved = localStorage.getItem("aquariumItems");
-    if (saved) {
-      try {
+    try {
+      const saved = localStorage.getItem("aquariumItems");
+      if (saved) {
         const parsedState = JSON.parse(saved);
-        setAquariumState(parsedState);
+        console.log("Loaded aquarium state:", parsedState.length, "items");
         return parsedState;
-      } catch (error) {
-        console.error("Error loading aquarium state:", error);
       }
+    } catch (error) {
+      console.error("Error loading aquarium state:", error);
     }
     return [];
   }, []);
 
   // Add item to aquarium
   const addItemToAquarium = (item: AquariumStateItem, x: number = 400, y: number = 300) => {
+    console.log(`Adding ${item.name} to aquarium at position:`, x, y);
+
     const newItem: AquariumStateItem = {
       ...item,
       x,
       y,
-      inAquarium: true
+      fromWarehouse: false
     };
 
     setAquariumState(prev => {
       // Remove from warehouse if it exists there
       const filtered = prev.filter(i => i.id !== item.id);
-      return [...filtered, newItem];
+      const updated = [...filtered, newItem];
+
+      console.log(`Aquarium now has ${updated.filter(i => !i.fromWarehouse).length} items in aquarium`);
+      return updated;
     });
 
     saveState();
@@ -284,11 +286,21 @@ const Aquarium = () => {
 
   // Remove item from aquarium (send to warehouse)
   const removeItemFromAquarium = (itemId: string) => {
-    setAquariumState(prev => prev.map(item =>
-      item.id === itemId
-        ? { ...item, inAquarium: false }
-        : item
-    ));
+    console.log(`Removing ${itemId} from aquarium`);
+
+    setAquariumState(prev => {
+      const updated = prev.map(item =>
+        item.id === itemId
+          ? { ...item, fromWarehouse: true }
+          : item
+      );
+
+      const itemInAquarium = updated.filter(i => !i.fromWarehouse).length;
+      const itemInWarehouse = updated.filter(i => i.fromWarehouse).length;
+
+      console.log(`After removal: ${itemInAquarium} in aquarium, ${itemInWarehouse} in warehouse`);
+      return updated;
+    });
 
     const item = aquariumState.find(i => i.id === itemId);
     saveState();
@@ -298,6 +310,7 @@ const Aquarium = () => {
 
   // Update item position (center-based)
   const updateItemPosition = (itemId: string, x: number, y: number) => {
+    console.log(`Updating position for ${itemId}:`, x, y);
     setAquariumState(prev => prev.map(item =>
       item.id === itemId
         ? { ...item, x, y }
@@ -308,6 +321,7 @@ const Aquarium = () => {
 
   // Update item scale
   const updateItemScale = (itemId: string, scale: number) => {
+    console.log(`Updating scale for ${itemId}:`, scale);
     setAquariumState(prev => prev.map(item =>
       item.id === itemId
         ? { ...item, scale: Math.max(0.5, Math.min(3, scale)) }
@@ -316,11 +330,100 @@ const Aquarium = () => {
     saveState();
   };
 
+  // Validate and fix state to ensure no items are lost
+  const validateAndFixState = useCallback((currentState: AquariumStateItem[]) => {
+    const shopCreaturesIds = creaturesInTank;
+    const shopDecorationsIds = decorationsInTank.map(d => d.id);
+
+    const allShopItemIds = [...shopCreaturesIds, ...shopDecorationsIds];
+
+    // Check if any shop items are missing from state
+    const missingItems = allShopItemIds.filter(id => !currentState.some(item => item.id === id));
+
+    if (missingItems.length > 0) {
+      console.warn("Found missing shop items, adding them back:", missingItems);
+
+      const newItems = missingItems.map(id => {
+        if (shopCreaturesIds.includes(id)) {
+          // It's a creature
+          const creatureData: Record<string, { image: string }> = {
+            'octopus': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/83.png' },
+            'jellyfish': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/82.png' },
+            'seahorse': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/85.png' },
+            'clownfish': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/77.png' },
+            'butterflyfish': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/78.png' },
+            'fish-trio': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/81.png' },
+            'blue-yellow-fish': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/79.png' },
+            'blue-fish': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/80.png' },
+          };
+          const creatureNames: Record<string, string> = {
+            'octopus': 'Mystic Octopus',
+            'jellyfish': 'Crystal Jellyfish',
+            'seahorse': 'Royal Seahorse',
+            'clownfish': 'Clownfish',
+            'butterflyfish': 'Butterfly Fish',
+            'fish-trio': 'Fish Trio',
+            'blue-yellow-fish': 'Blue-Yellow Fish',
+            'blue-fish': 'Blue Fish',
+          };
+          return {
+            id,
+            type: "fish" as const,
+            imageUrl: creatureData[id]?.image || '',
+            name: creatureNames[id] || id,
+            x: 400,
+            y: 300,
+            scale: 1,
+            fromWarehouse: false
+          };
+        } else {
+          // It's a decoration
+          const decorationData: Record<string, { image: string }> = {
+            'coral-arch': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/64.png' },
+            'seaweed-cluster': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/65.png' },
+            'treasure-chest': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/84.png' },
+            'small-rock': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/67.png' },
+            'big-rock': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/68.png' },
+            'bubble-maker': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/69.png' },
+            'anchor-relic': { image: 'https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/SHOP/70.png' },
+          };
+          const decorationNames: Record<string, string> = {
+            'coral-arch': 'Coral Arch',
+            'seaweed-cluster': 'Seaweed Cluster',
+            'treasure-chest': 'Treasure Chest',
+            'small-rock': 'Small Rock',
+            'big-rock': 'Big Rock',
+            'bubble-maker': 'Bubble Maker',
+            'anchor-relic': 'Anchor Relic',
+          };
+          return {
+            id,
+            type: "decoration" as const,
+            imageUrl: decorationData[id]?.image || '',
+            name: decorationNames[id] || id,
+            x: 400,
+            y: 300,
+            scale: 1,
+            fromWarehouse: false
+          };
+        }
+      });
+
+      const fixedState = [...currentState, ...newItems];
+      console.log("Fixed state with missing items:", fixedState.length, "total items");
+      return fixedState;
+    }
+
+    return currentState;
+  }, [creaturesInTank, decorationsInTank]);
+
   // ================= INITIALIZATION =================
 
   // Load items from shop context and localStorage
   useEffect(() => {
     const loadAquariumItems = () => {
+      console.log("Loading aquarium items...");
+
       // Get items from shop context
       const shopCreatures = creaturesInTank.map(id => {
         const creatureData: Record<string, { image: string }> = {
@@ -348,10 +451,10 @@ const Aquarium = () => {
           type: "fish" as const,
           imageUrl: creatureData[id]?.image || '',
           name: creatureNames[id] || id,
-          x: 400, // Center position initially
+          x: 400, // Default center position
           y: 300,
           scale: 1,
-          inAquarium: false // New items start in warehouse
+          fromWarehouse: true // New items start in warehouse
         };
       });
 
@@ -382,44 +485,44 @@ const Aquarium = () => {
           x: decoration.x || 400,
           y: decoration.y || 300,
           scale: 1,
-          inAquarium: false // New items start in warehouse
+          fromWarehouse: true // New items start in warehouse
         };
       });
 
-      // Load saved positions from localStorage (aquariumItems)
-      const savedItems = localStorage.getItem("aquariumItems");
-      let savedAquariumItems: AquariumStateItem[] = [];
-      if (savedItems) {
-        try {
-          savedAquariumItems = JSON.parse(savedItems);
-        } catch (error) {
-          console.error("Error loading aquarium items:", error);
-        }
+      // Load saved state from localStorage (positions and states)
+      const savedState = loadState();
+
+      if (savedState && savedState.length > 0) {
+        console.log("Found saved state, merging with shop items...");
+
+        // Create a map of shop items for quick lookup
+        const allShopItems = [...shopCreatures, ...shopDecorations];
+        const shopItemsMap = new Map(allShopItems.map(item => [item.id, item]));
+
+        // Merge saved state with shop items, preserving saved positions/scales/states
+        const mergedItems = savedState.map(savedItem => {
+          const shopItem = shopItemsMap.get(savedItem.id);
+          if (shopItem) {
+            // Item exists in shop, use saved position/scale/state but shop image/name
+            return {
+              ...shopItem,
+              x: savedItem.x,
+              y: savedItem.y,
+              scale: savedItem.scale,
+              fromWarehouse: savedItem.fromWarehouse
+            };
+          } else {
+            // Item not in shop anymore, keep as-is
+            return savedItem;
+          }
+        });
+
+        setAquariumState(mergedItems);
+        console.log("Successfully merged saved state with shop items");
+      } else {
+        console.log("No saved state found, using shop items only");
+        setAquariumState([...shopCreatures, ...shopDecorations]);
       }
-
-      // Load warehouse from localStorage
-      const savedWarehouse = localStorage.getItem("aquariumWarehouse");
-      let savedWarehouseItems: AquariumStateItem[] = [];
-      if (savedWarehouse) {
-        try {
-          savedWarehouseItems = JSON.parse(savedWarehouse);
-        } catch (error) {
-          console.error("Error loading warehouse items:", error);
-        }
-      }
-
-      // Merge shop items with saved positions
-      const allItems = [...shopCreatures, ...shopDecorations];
-      const mergedItems = allItems.map(item => {
-        const saved = savedAquariumItems.find(s => s.id === item.id);
-        return saved || item;
-      });
-
-      // Filter items that are in aquarium vs warehouse
-      const aquariumIds = mergedItems.map(item => item.id);
-      const warehouseOnlyItems = savedWarehouseItems.filter(item => !aquariumIds.includes(item.id));
-
-      setAquariumState([...mergedItems, ...warehouseOnlyItems]);
     };
 
     if (!loading) {
@@ -519,7 +622,7 @@ const Aquarium = () => {
 
             {/* Render Aquarium Items using AquariumItem component */}
             {aquariumState
-              .filter(item => item.inAquarium)
+              .filter(item => !item.fromWarehouse)
               .map((item) => (
                 <AquariumItem
                   key={item.id}
@@ -534,7 +637,7 @@ const Aquarium = () => {
               ))}
 
             {/* Bubble Maker Effect */}
-            {aquariumState.some(item => item.id === 'bubble-maker' && item.inAquarium) && (
+            {aquariumState.some(item => item.id === 'bubble-maker' && !item.fromWarehouse) && (
               <div className="absolute inset-0 pointer-events-none z-10">
                 {Array.from({ length: 8 }, (_, i) => (
                   <div
@@ -604,14 +707,14 @@ const Aquarium = () => {
 
             <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto">
               {/* Fish Section */}
-              {aquariumState.filter(item => item.type === 'fish' && !item.inAquarium).length > 0 && (
+              {aquariumState.filter(item => item.type === 'fish' && item.fromWarehouse).length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-xl font-bold text-cyan-700 mb-4 flex items-center gap-2">
                     🐠 Fish
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {aquariumState
-                      .filter(item => item.type === 'fish' && !item.inAquarium)
+                      .filter(item => item.type === 'fish' && item.fromWarehouse)
                       .map((item) => (
                         <WarehouseItem
                           key={item.id}
@@ -624,14 +727,14 @@ const Aquarium = () => {
               )}
 
               {/* Decorations Section */}
-              {aquariumState.filter(item => item.type === 'decoration' && !item.inAquarium).length > 0 && (
+              {aquariumState.filter(item => item.type === 'decoration' && item.fromWarehouse).length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-xl font-bold text-emerald-700 mb-4 flex items-center gap-2">
                     🪸 Decorations
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {aquariumState
-                      .filter(item => item.type === 'decoration' && !item.inAquarium)
+                      .filter(item => item.type === 'decoration' && item.fromWarehouse)
                       .map((item) => (
                         <WarehouseItem
                           key={item.id}
@@ -644,7 +747,7 @@ const Aquarium = () => {
               )}
 
               {/* Empty state */}
-              {aquariumState.filter(item => !item.inAquarium).length === 0 && (
+              {aquariumState.filter(item => item.fromWarehouse).length === 0 && (
                 <div className="text-center py-16">
                   <Package className="w-20 h-20 text-slate-300 mx-auto mb-4" />
                   <h3 className="text-2xl font-semibold text-slate-600 mb-2">Warehouse is empty</h3>

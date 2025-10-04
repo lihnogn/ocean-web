@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useSocial, Comment } from "@/state/SocialContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getComments, addComment as addCommentAPI } from "@/lib/supabase/social";
 
 interface CommentsSectionProps {
   postId: string;
@@ -18,24 +19,14 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const { currentUserProfile, addComment } = useSocial();
+  const { currentUserProfile } = useSocial();
 
   // Load comments
   useEffect(() => {
     const loadComments = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('comments')
-          .select(`
-            *,
-            user_profile:user_profiles(*)
-          `)
-          .eq('post_id', postId)
-          .order('created_at', { ascending: true });
-
-        if (error) throw error;
-
+        const data = await getComments(postId);
         setComments(data || []);
       } catch (error) {
         console.error('Error loading comments:', error);
@@ -80,13 +71,17 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
     setIsSubmitting(true);
 
     try {
-      const success = await addComment(postId, newComment.trim());
+      const success = await addCommentAPI(postId, newComment.trim());
 
       if (success) {
         setNewComment("");
+        toast.success('Comment added!');
+      } else {
+        toast.error('Failed to add comment');
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+      toast.error('Failed to add comment');
     } finally {
       setIsSubmitting(false);
     }

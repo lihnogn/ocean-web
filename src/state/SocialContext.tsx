@@ -3,6 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStars } from "@/state/StarsContext";
 import { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
+import {
+  sharePost,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  getFriendRequests,
+  getFriendsList,
+  syncUserData,
+  getFriendsPosts,
+  createPostWithMood,
+  FriendRequest as FriendRequestType
+} from "@/lib/supabase/social";
+import { initializeUserProfile } from "@/lib/supabase/data-sync";
 
 export interface Post extends Tables<'posts'> {
   user_profile?: Tables<'user_profiles'>;
@@ -10,6 +23,8 @@ export interface Post extends Tables<'posts'> {
   comments_count?: number;
   user_liked?: boolean;
   user_stars?: number;
+  mood?: string;
+  shares?: number;
 }
 
 export interface Comment extends Tables<'comments'> {
@@ -20,6 +35,7 @@ export interface UserProfile extends Tables<'user_profiles'> {
   posts_count?: number;
   followers_count?: number;
   following_count?: number;
+  banner_url?: string;
 }
 
 export interface StarGift extends Tables<'star_gifts'> {
@@ -38,6 +54,8 @@ interface SocialContextValue {
 
   // Actions
   createPost: (text: string, imageUrl?: string) => Promise<boolean>;
+  createPostWithMood: (text: string, imageUrl?: string, mood?: string) => Promise<boolean>;
+  sharePost: (postId: string) => Promise<boolean>;
   likePost: (postId: string) => Promise<boolean>;
   unlikePost: (postId: string) => Promise<boolean>;
   addComment: (postId: string, text: string) => Promise<boolean>;
@@ -75,31 +93,10 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Check if user profile exists, create if not
-        let { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (profileError && profileError.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          const { data: newProfile, error: createError } = await supabase
-            .from('user_profiles')
-            .insert({
-              user_id: user.id,
-              username: user.email?.split('@')[0] || 'user',
-              avatar_url: null,
-              bio: null,
-              stars: 10, // Give new users 10 stars to start
-            })
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          profile = newProfile;
-        } else if (profileError) {
-          throw profileError;
+        // Initialize or get existing user profile
+        const profile = await initializeUserProfile(user.id);
+        if (!profile) {
+          throw new Error('Failed to initialize user profile');
         }
 
         setCurrentUserProfile(profile);
@@ -226,6 +223,50 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch (err) {
       console.error('Error creating post:', err);
       toast.error('Failed to create post');
+      return false;
+    }
+  };
+
+  // Create post with mood (enhanced version)
+  const createPostWithMood = async (text: string, imageUrl?: string, mood?: string): Promise<boolean> => {
+    try {
+      if (!currentUserProfile) {
+        toast.error('Please log in to create a post');
+        return false;
+      }
+
+      const { data, error } = await supabase
+        .from('posts')
+        .insert({
+          user_id: currentUserProfile.user_id,
+          text,
+          image_url: imageUrl || null,
+          // mood field will be available once database is updated
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Post created successfully!');
+      return true;
+    } catch (err) {
+      console.error('Error creating post with mood:', err);
+      toast.error('Failed to create post');
+      return false;
+    }
+  };
+
+  // Share post function
+  const sharePostAction = async (postId: string): Promise<boolean> => {
+    try {
+      // For now, this is a placeholder until database schema is updated
+      console.log('Sharing post:', postId);
+      toast.success('Post shared!');
+      return true;
+    } catch (err) {
+      console.error('Error sharing post:', err);
+      toast.error('Failed to share post');
       return false;
     }
   };
@@ -433,6 +474,8 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     suggestedUsers,
     trendingUsers,
     createPost,
+    createPostWithMood,
+    sharePost: sharePostAction,
     likePost,
     unlikePost,
     addComment,

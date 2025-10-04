@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
-import { Camera, Image, Send } from "lucide-react";
+import { Send, Image, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSocial } from "@/state/SocialContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { createPostWithContent } from "@/lib/supabase/social";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PostComposerProps {
   onPostCreated?: () => void;
@@ -18,7 +19,7 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { currentUserProfile, createPost } = useSocial();
+  const { currentUserProfile } = useSocial();
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -96,7 +97,7 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
       }
 
       // Create post
-      const success = await createPost(text.trim(), imageUrl);
+      const success = await createPostWithContent(text.trim(), imageUrl);
 
       if (success) {
         setText("");
@@ -128,16 +129,16 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
   }
 
   return (
-    <div className="glass-effect rounded-3xl border border-white/20 p-6 animate-fade-in">
-      <div className="flex items-start gap-4">
-        <Avatar className="w-12 h-12 border-2 border-primary/30">
+    <div className="glass-effect rounded-3xl border border-white/20 p-4 sm:p-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-start gap-4">
+        <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-primary/30 flex-shrink-0">
           <AvatarImage src={currentUserProfile.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary/20 text-primary font-bold">
+          <AvatarFallback className="bg-primary/20 text-primary font-bold text-sm">
             {currentUserProfile.username.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 space-y-4">
+        <div className="flex-1 space-y-4 w-full">
           <Textarea
             placeholder="Share something with the ocean community..."
             value={text}
@@ -170,7 +171,7 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2">
               <input
                 ref={fileInputRef}
@@ -189,10 +190,11 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
                 className="border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
               >
                 <Image className="w-4 h-4 mr-2" />
-                Add Image
+                <span className="hidden sm:inline">Add Image</span>
+                <span className="sm:hidden">Image</span>
               </Button>
 
-              <span className="text-sm text-white/60">
+              <span className="text-sm text-white/60 hidden sm:inline">
                 Press Ctrl+Enter to post
               </span>
             </div>
@@ -200,7 +202,7 @@ export const PostComposer = ({ onPostCreated }: PostComposerProps) => {
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || (!text.trim() && !imageFile)}
-              className="bg-primary hover:bg-primary/90 text-white"
+              className="bg-primary hover:bg-primary/90 text-white w-full sm:w-auto"
             >
               {isSubmitting ? (
                 <>
