@@ -117,8 +117,8 @@ const Games = () => {
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yellow-300/90 shadow-[0_0_18px_rgba(252,211,77,0.9)]">
                 ⭐
               </span>
-              <span className="text-xl text-white/90">Stars:</span>
-              <span className="text-2xl font-bold text-white drop-shadow-sm">{stars}</span>
+              <span className="text-xl ocean-dark-text/90">Stars:</span>
+              <span className="text-2xl font-bold ocean-dark-text drop-shadow-sm">{stars}</span>
             </div>
           </div>
 
@@ -592,7 +592,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
           {/* Top UI - Stars & Exit */}
           <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/50 rounded-full px-4 py-2 backdrop-blur-md">
             <span className="text-yellow-300 text-2xl">⭐</span>
-            <span className="text-white font-bold text-lg">{globalStars}</span>
+            <span className="ocean-dark-text font-bold text-lg">{globalStars}</span>
           </div>
           <button
             onClick={exitGame}
@@ -603,7 +603,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
           {/* Main Carousel */}
           <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-8 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+            <h2 className="text-4xl md:text-5xl font-bold ocean-dark-text mb-8 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
               Choose Your Character
             </h2>
 
@@ -634,7 +634,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
                 {/* Lock Overlay for Locked Characters */}
                 {!unlockedSkins.has(SKINS[selectedSkinIndex].id) && (
                   <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                    <span className="text-white text-4xl">🔒</span>
+                    <span className="ocean-dark-text text-4xl">🔒</span>
                   </div>
                 )}
               </div>
@@ -650,7 +650,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
 
             {/* Character Info */}
             <div className="text-center mb-8 max-w-md">
-              <h3 className="text-3xl md:text-4xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-4">
+              <h3 className="text-3xl md:text-4xl font-bold ocean-dark-text drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-4">
                 {SKINS[selectedSkinIndex].name}
               </h3>
 
@@ -667,8 +667,8 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
                   onClick={() => setSelectedSkin(SKINS[selectedSkinIndex].id)}
                   className={`px-8 py-4 rounded-full font-bold shadow-lg hover:scale-105 transition-all text-xl ${
                     selectedSkin === SKINS[selectedSkinIndex].id
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white animate-pulse'
-                      : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-cyan-500/50'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 ocean-dark-text animate-pulse'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 ocean-dark-text hover:shadow-cyan-500/50'
                   }`}
                 >
                   Select
@@ -718,7 +718,7 @@ function Game2RunnerFullscreen({ onClose, onEarnStars }: { onClose: () => void; 
               border: '2px solid red' // Red border for debugging
             }}
           />
-          <div className="absolute top-4 left-4 text-white text-lg font-bold">Stars: {sessionStars}</div>
+          <div className="absolute top-4 left-4 ocean-dark-text text-lg font-bold">Stars: {sessionStars}</div>
           <button onClick={exitGame} className="absolute top-4 right-4 px-4 py-2 rounded-xl bg-gradient-to-r from-slate-200/30 via-gray-300/25 to-zinc-300/30 hover:from-slate-100/40 hover:via-gray-200/35 hover:to-zinc-200/40 text-slate-600 border border-slate-200/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]">Exit</button>
 
           {/* Fade transition overlay */}
@@ -797,9 +797,9 @@ function GameCard({
             {gameKey === "game2" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg2?updatedAt=1759520737598" alt="Game 2 Icon" className="w-24 h-24 object-contain" />}
             {gameKey === "game3" && <img src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/lgg3?updatedAt=1759520737410" alt="Game 3 Icon" className="w-24 h-24 object-contain" />}
           </div>
-          <h2 className="text-2xl font-bold text-white drop-shadow-sm">{meta.title}</h2>
+          <h2 className="text-2xl font-bold ocean-dark-text drop-shadow-sm">{meta.title}</h2>
         </div>
-        <p className="text-white/85 mb-6">{meta.description}</p>
+        <p className="ocean-dark-text/85 mb-6">{meta.description}</p>
 
         {/* placeholder art */}
         <div className="relative flex-1 min-h-[140px] rounded-2xl bg-white/30 border border-white/30 shadow-inner overflow-hidden">
@@ -888,8 +888,6 @@ function TutorialModal({
       "Each word has 1-2 missing letters.",
       "Click the floating letter treasures to complete words.",
       "Complete each word to earn 1 Lucky Star!",
-      "Letters gently drift like ocean currents.",
-      "Letters won't overlap with each other or the word display.",
     ];
   }, [gameKey]);
 
@@ -1290,7 +1288,7 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
 
       {/* HUD - Only show during active gameplay */}
       {!isComplete && (
-        <div className="absolute top-4 left-4 z-[80] flex items-center gap-4 text-white">
+        <div className="absolute top-4 left-4 z-[80] flex items-center gap-4 ocean-dark-text">
           <div className="px-3 py-1 rounded-xl bg-black/30 border border-white/30 backdrop-blur-md">
             Score: <span className="font-bold">{score}</span>
           </div>
@@ -1312,12 +1310,12 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
 
       {/* Main game area - Only show during active gameplay */}
       {!isComplete && (
-        <div ref={containerRef} className="relative z-10 h-full flex flex-col items-center justify-center text-white">
+        <div ref={containerRef} className="relative z-10 h-full flex flex-col items-center justify-center ocean-dark-text">
 
           {/* Word display */}
           <div className="mb-8 text-center">
             <h2 className="text-3xl font-bold mb-2">Find the missing letters!</h2>
-            <div className="text-6xl font-mono font-bold tracking-wider bg-black/30 px-8 py-4 rounded-xl border border-white/30 backdrop-blur-md">
+            <div className="text-6xl font-mono font-bold tracking-wider bg-black/30 px-8 py-4 rounded-xl border border-white/30 backdrop-blur-md text-primary">
               {visibleWord.split('').map((char, i) => (
                 <span key={i} className="inline-block mx-1">
                   {char}
@@ -1405,7 +1403,7 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
             <div className="absolute inset-0 bg-black/60 rounded-3xl" />
             <div className="relative z-10 w-full max-w-2xl bg-white/10 backdrop-blur-md rounded-3xl border-2 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-10 text-center animate-scale-in">
               <div className="mb-8">
-                <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white drop-shadow-lg leading-tight">
+                <h2 className="text-4xl md:text-5xl font-bold mb-4 ocean-dark-text drop-shadow-lg leading-tight">
                   Congratulations!<br/>
                   You have completed the ocean adventure.
                 </h2>
@@ -1413,7 +1411,7 @@ function OceanWordHunt({ onClose, onEarnStars }: { onClose: () => void; onEarnSt
               </div>
 
               <div className="mb-10">
-                <div className="inline-flex items-center gap-4 px-8 py-5 rounded-2xl bg-gradient-to-r from-yellow-400/90 via-orange-400/90 to-yellow-500/90 text-white font-bold text-2xl shadow-2xl backdrop-blur-sm border border-yellow-300/50 ">
+                <div className="inline-flex items-center gap-4 px-8 py-5 rounded-2xl bg-gradient-to-r from-yellow-200/80 via-yellow-300/85 to-yellow-400/90 ocean-dark-text font-bold text-2xl shadow-2xl backdrop-blur-sm border border-yellow-200/50 hover:shadow-[0_0_20px_rgba(255,193,7,0.4)] transition-all duration-300 hover:scale-105 animate-pulse" style={{boxShadow: '0 0 15px rgba(255, 193, 7, 0.3), 0 0 30px rgba(255, 193, 7, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1)'}}>
                   <span className="text-4xl animate-spin">⭐</span>
                   <span className="mx-2">{wordsCompleted} Lucky Stars Earned!</span>
                   <span className="text-4xl animate-spin" style={{animationDirection: 'reverse'}}>⭐</span>
@@ -1723,7 +1721,7 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
     <div className="fixed inset-0 z-[80]">
       <video className="absolute inset-0 w-full h-full object-cover" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game1.%20mp4?updatedAt=1759396550237" autoPlay muted loop playsInline preload="auto" />
       <div className="absolute inset-0 bg-black/20" />
-      <div className="relative z-10 flex flex-col h-full text-white">
+      <div className="relative z-10 flex flex-col h-full ocean-dark-text">
         <div className="flex items-center justify-between p-4">
           <div className="text-lg font-semibold">Match the Ocean</div>
           <div className="flex items-center gap-3">
@@ -1742,7 +1740,7 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
                   {(placed[c.key] ?? null) === null ? (
                     <img src={c.img} alt={c.name} className="w-full h-full object-contain cursor-grab active:cursor-grabbing drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]" onPointerDown={startDrag(c.key)} draggable={false} />
                   ) : (
-                    <div className="text-white/60 text-sm">Placed</div>
+                    <div className="ocean-dark-text/60 text-sm">Placed</div>
                   )}
                 </div>
               );
@@ -1780,14 +1778,81 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
         )}
 
         {completed && (
-          <div className="fixed inset-0 z-[95] grid place-items-center">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-g1-fade" />
-            <div className="relative z-10 w-[92%] max-w-md rounded-3xl border border-white/30 bg-white/80 p-6 text-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.5)] animate-g1-pop">
-              <h3 className="text-2xl font-bold mb-2">Well done!</h3>
-              <p className="mb-4">You matched {score}/10 creatures. You earned +{score} stars.</p>
-              <div className="flex gap-3 justify-end">
-                <button className="px-4 py-2 rounded-xl bg-white/90 hover:bg-white font-medium" onClick={commitStarsAndClose}>Return to Home</button>
-                <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold" onClick={() => { onEarnStars(score); setCompleted(false); resetGame(); }}>Play Again</button>
+          <div className="fixed inset-0 z-[85] bg-gradient-to-br from-cyan-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-md">
+            {/* Celebration animation - enhanced */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {/* Rising bubbles - more intense */}
+              {[...Array(20)].map((_, i) => (
+                <div
+                  key={`bubble-${i}`}
+                  className="absolute rounded-full bg-cyan-300/40 border-2 border-cyan-200/60 animate-celebration-bubble"
+                  style={{
+                    left: `${10 + Math.random() * 80}%`,
+                    bottom: `-30px`,
+                    width: `${25 + Math.random() * 35}px`,
+                    height: `${25 + Math.random() * 35}px`,
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${2.5 + Math.random() * 2}s`
+                  }}
+                />
+              ))}
+
+              {/* Enhanced sparkle effects */}
+              {[...Array(35)].map((_, i) => (
+                <div
+                  key={`sparkle-${i}`}
+                  className="absolute w-3 h-3 bg-yellow-200 rounded-full animate-celebration-sparkle shadow-lg"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 1.5}s`,
+                    animationDuration: `${1.5 + Math.random() * 1}s`
+                  }}
+                />
+              ))}
+
+              {/* Wave glow effect */}
+              <div className="absolute inset-0 animate-wave-glow">
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 via-blue-400/15 to-cyan-400/10 blur-3xl "></div>
+              </div>
+            </div>
+
+
+            <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+              {/* Video background for celebration */}
+              <video className="absolute inset-0 w-full h-full object-cover rounded-3xl" src="https://ik.imagekit.io/1mbxrb4zp/WEB%20OCEAN/game1.%20mp4?updatedAt=1759396550237" autoPlay muted loop playsInline preload="auto" />
+              <div className="absolute inset-0 bg-black/60 rounded-3xl" />
+              <div className="relative z-10 w-full max-w-2xl bg-white/10 backdrop-blur-md rounded-3xl border-2 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-10 text-center animate-scale-in">
+                <div className="mb-8">
+                  <h2 className="text-4xl md:text-5xl font-bold mb-4 ocean-dark-text drop-shadow-lg leading-tight">
+                    Well done!<br/>
+                    You matched all creatures!
+                  </h2>
+                  <div className="text-3xl text-cyan-200 font-semibold mb-6">🐠✨</div>
+                </div>
+
+                <div className="mb-10">
+                  <div className="inline-flex items-center gap-4 px-8 py-5 rounded-2xl bg-gradient-to-r from-yellow-200/80 via-yellow-300/85 to-yellow-400/90 ocean-dark-text font-bold text-2xl shadow-2xl backdrop-blur-sm border border-yellow-200/50 hover:shadow-[0_0_20px_rgba(255,193,7,0.4)] transition-all duration-300 hover:scale-105 animate-pulse" style={{boxShadow: '0 0 15px rgba(255, 193, 7, 0.3), 0 0 30px rgba(255, 193, 7, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1)'}}>
+                    <span className="text-4xl animate-spin">⭐</span>
+                    <span className="mx-2">{score} Lucky Stars Earned!</span>
+                    <span className="text-4xl animate-spin" style={{animationDirection: 'reverse'}}>⭐</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-6 justify-center">
+                  <button
+                    className="px-10 py-4 rounded-2xl bg-gradient-to-r from-yellow-200/10 via-yellow-300/12 to-yellow-400/15 hover:from-yellow-100/20 hover:via-yellow-200/25 hover:to-yellow-300/30 ocean-dark-text border border-yellow-200/20 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,193,7,0.6)]"
+                    onClick={() => { onEarnStars(score); setCompleted(false); resetGame(); }}
+                  >
+                    Play Again
+                  </button>
+                  <button
+                    className="px-10 py-4 rounded-2xl bg-gradient-to-r from-yellow-200/10 via-yellow-300/12 to-yellow-400/15 hover:from-yellow-100/20 hover:via-yellow-200/25 hover:to-yellow-300/30 ocean-dark-text border border-yellow-200/20 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,193,7,0.6)]"
+                    onClick={commitStarsAndClose}
+                  >
+                    Exit
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1802,7 +1867,7 @@ function Game1Fullscreen({ onClose, onEarnStars }: { onClose: () => void; onEarn
                   <img src={c.img} alt={c.name} className="w-48 h-48 object-contain justify-self-center drop-shadow" />
                   <h4 className="text-xl font-bold text-center">{infoKey === "fish" ? "Angelfish" : c.name}</h4>
                   <p className="text-slate-700 text-center">{G1_CREATURE_DESCRIPTIONS[infoKey!] || "Description not found."}</p>
-                  <button className="justify-self-center px-4 py-2 rounded-xl bg-slate-900 text-white" onClick={() => setInfoKey(null)}>Close</button>
+                  <button className="justify-self-center px-4 py-2 rounded-xl bg-slate-900 ocean-dark-text" onClick={() => setInfoKey(null)}>Close</button>
                 </div>
               ); })()}
             </div>
